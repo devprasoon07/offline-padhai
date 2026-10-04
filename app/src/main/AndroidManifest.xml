@@ -5,7 +5,9 @@
     <application
         android:label="Offline PadhAI"
         android:theme="@style/Theme.OfflinePadhAI"
-        android:largeHeap="true">
+        android:largeHeap="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true">
