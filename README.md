@@ -156,6 +156,21 @@ Android (Kotlin, coroutines) · CameraX 1.3.4 · ML Kit Text Recognition
 (Devanagari + Latin) · MediaPipe Tasks GenAI 0.10.14 (`LlmInference`) ·
 Gemma 2B-IT Q4 on-device · Material3 dark theme.
 
+## Security
+
+- **No `INTERNET` permission** — the manifest doesn't declare it, so user data
+  mathematically cannot leave the device. No servers, no API calls, nothing to breach.
+- **Auto-backup disabled** (`allowBackup=false`) — app data never lands in Google Drive backups.
+- **Model integrity check** — `TutorEngine` verifies the side-loaded model's SHA-256
+  before loading (`EXPECTED_MODEL_SHA256`; set it via `sha256sum` before release —
+  a tampered model is refused).
+- **R8 minification + obfuscation** in release builds, with conservative keep rules for
+  MediaPipe / CameraX / ML Kit (`app/proguard-rules.pro`).
+- **No user content in logs** — questions and answers are never logged; only
+  error/status lines.
+- **No hardcoded secrets** and the model binary is gitignored — nothing sensitive in
+  the repo.
+
 ## Assumptions
 
 - Streaming uses the stable `setResultListener` + `generateResponseAsync(prompt)` pattern;
