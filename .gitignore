@@ -6,3 +6,7 @@
 app/build/
 *.apk
 *.aab
+
+# On-device LLM model files — kabhi commit mat karo (~1.5GB, side-load hote hain)
+*.bin
+*.task
