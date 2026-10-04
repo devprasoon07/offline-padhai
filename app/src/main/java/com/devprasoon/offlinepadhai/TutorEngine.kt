@@ -8,6 +8,7 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -41,6 +42,14 @@ class TutorEngine(private val context: Context) {
         private const val TAG = "TutorEngine"
         private const val MAX_TOKENS = 1024
         private const val HISTORY_TURNS = 4
+
+        /**
+         * Model file ka expected SHA-256 (hex, lowercase).
+         * Khali hai to check skip hota hai (dev builds ke liye theek).
+         * Release se pehle set karo: `sha256sum gemma-2b-it-gpu-int4.bin`
+         * aur yahan paste karo — tampered model load nahi hogi.
+         */
+        private const val EXPECTED_MODEL_SHA256 = ""
 
         private const val SYSTEM_PROMPT = """
             Tum PadhAI ho — Bharat ke students ke liye ek shaant aur sabr wala tutor.
@@ -79,6 +88,9 @@ class TutorEngine(private val context: Context) {
         if (!file.exists()) {
             return@withContext Result.failure(IllegalStateException("model-missing"))
         }
+        if (!verifyModelIntegrity(file)) {
+            return@withContext Result.failure(IllegalStateException("model-tampered"))
+        }
         val gpuResult = tryInit(file, LlmInference.Backend.GPU)
         if (gpuResult.isSuccess) {
             Log.i(TAG, "LLM ready on GPU")
@@ -88,6 +100,35 @@ class TutorEngine(private val context: Context) {
         val cpuResult = tryInit(file, LlmInference.Backend.CPU)
         if (cpuResult.isSuccess) Log.i(TAG, "LLM ready on CPU")
         cpuResult
+    }
+
+    /**
+     * Model file ki SHA-256 integrity verify karo.
+     * EXPECTED_MODEL_SHA256 khali hai to check skip (dev builds),
+     * warna mismatch pe model load karne se inkaar.
+     */
+    private fun verifyModelIntegrity(file: File): Boolean {
+        if (EXPECTED_MODEL_SHA256.isBlank()) {
+            Log.w(TAG, "EXPECTED_MODEL_SHA256 not set — integrity check skipped")
+            return true
+        }
+        return try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { ins ->
+                val buf = ByteArray(8192)
+                var n: Int
+                while (ins.read(buf).also { n = it } != -1) {
+                    digest.update(buf, 0, n)
+                }
+            }
+            val actual = digest.digest().joinToString("") { "%02x".format(it) }
+            val ok = actual.equals(EXPECTED_MODEL_SHA256.trim(), ignoreCase = true)
+            if (!ok) Log.e(TAG, "Model SHA-256 mismatch — refusing to load")
+            ok
+        } catch (e: Exception) {
+            Log.e(TAG, "Integrity check failed", e)
+            false
+        }
     }
 
     private fun tryInit(file: File, backend: LlmInference.Backend): Result<Unit> {
