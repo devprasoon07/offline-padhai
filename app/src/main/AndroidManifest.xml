@@ -4,7 +4,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:label="Offline PadhAI"
-        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+        android:theme="@style/Theme.OfflinePadhAI"
+        android:largeHeap="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">

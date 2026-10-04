@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PadhAI</string>
+    <string name="wordmark">PadhAI</string>
+
+    <string name="capture_desc">Photo lo</string>
+    <string name="sheet_hint">Photo lo — sawal apne aap padh liya jayega</string>
+
+    <string name="question_label">Sawal</string>
+    <string name="btn_explain">Samjhao</string>
+    <string name="explaining">Samjha raha hu…</string>
+
+    <string name="followup_label">Kuch aur puchho?</string>
+    <string name="followup_hint">Yahan likho…</string>
+    <string name="btn_send">Bhejo</string>
+    <string name="send_desc">Bhejo</string>
+
+    <string name="airplane_hint">Airplane mode me bhi chalega — sab kuch phone pe hai</string>
+
+    <string name="setup_title">Model taiyaar nahi hai</string>
+    <string name="setup_body">Gemma model abhi app me nahi hai. README me diye steps se .bin file app ke folder me rakho, phir neeche dabao.</string>
+    <string name="btn_recheck">Phir dekho</string>
+
+    <string name="status_model_loading">Model load ho raha hai…</string>
+    <string name="status_model_ready">Taiyaar — photo lo</string>
+    <string name="status_ocr_reading">Padh raha hu…</string>
+    <string name="status_ocr_done">Mil gaya — ab Samjhao dabao</string>
+
+    <string name="err_photo">Photo nahi li ja saki</string>
+    <string name="err_camera">Camera khul nahi paya</string>
+    <string name="err_permission">Photo lene ke liye camera ki permission chahiye</string>
+    <string name="err_model_load">Model load nahi hua</string>
+    <string name="err_not_ready">Model abhi taiyaar nahi hai</string>
+    <string name="err_empty_question">Pehle sawal ka text aane do</string>
+    <string name="err_busy">Pehla jawab poora hone do</string>
+</resources>
