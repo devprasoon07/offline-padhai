@@ -15,9 +15,9 @@ data class AppLanguage(
 
 object Languages {
     val ALL = listOf(
+        AppLanguage("english", "English", "simple English"),
         AppLanguage("hinglish", "Hinglish", "Hinglish (Roman script me likhi Hindi + aasaan English)"),
         AppLanguage("hindi", "हिन्दी", "Hindi (Devanagari script me)"),
-        AppLanguage("english", "English", "simple English"),
         AppLanguage("bengali", "বাংলা", "Bengali (Bengali script me)"),
         AppLanguage("tamil", "தமிழ்", "Tamil (Tamil script me)"),
         AppLanguage("telugu", "తెలుగు", "Telugu (Telugu script me)"),
@@ -39,7 +39,7 @@ object AppPrefs {
 
     fun getLanguage(context: Context): AppLanguage {
         val code = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_LANG, "hinglish")
+            .getString(KEY_LANG, "english")
         return Languages.byCode(code)
     }
 
