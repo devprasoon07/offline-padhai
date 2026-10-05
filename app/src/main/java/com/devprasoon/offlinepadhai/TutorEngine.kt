@@ -232,14 +232,23 @@ class TutorEngine(private val context: Context) {
             return@withContext Result.failure(IllegalStateException("busy"))
         }
         try {
+            // Chhote model ko example + adhura JSON deke shuru karwao —
+            // isse valid JSON aane ke chance kaafi badh jaate hain.
             val prompt = wrapChatTemplate(
                 "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
                 "questions banao, ${language.promptName} me. " +
-                "Sirf JSON me jawab do, koi extra text nahi:\n" +
-                "{\"questions\":[{\"q\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer\":0}]}\n" +
-                "\"answer\" sahi option ka index hai (0-3)."
+                "RULES: Sirf valid JSON do, koi extra text, koi explanation nahi. " +
+                "Har question me exactly 4 options hon, answer 0-3 ke beech. " +
+                "Example: {\"questions\":[{\"q\":\"Paani ka formula kya hai?\",\"options\":[\"H2O\",\"CO2\",\"O2\",\"N2\"],\"answer\":0}]}\n" +
+                "Ab \"$topic\" par 5 questions ka JSON shuru karo:\n" +
+                "{\"questions\":["
             )
-            Result.success(engine.generateResponse(prompt))
+            var raw = engine.generateResponse(prompt)
+            // Model ne prefix ke baad continue kiya — poora JSON jodo.
+            if (!raw.trimStart().startsWith("{")) {
+                raw = "{\"questions\":[" + raw
+            }
+            Result.success(raw)
         } catch (e: Exception) {
             Log.e(TAG, "generateQuiz failed", e)
             Result.failure(e)

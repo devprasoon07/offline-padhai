@@ -206,7 +206,11 @@ class QuizActivity : AppCompatActivity() {
     private fun extractJson(raw: String): String {
         val start = raw.indexOf('{')
         val end = raw.lastIndexOf('}')
-        return if (start >= 0 && end > start) raw.substring(start, end + 1) else raw
+        if (start < 0 || end <= start) return raw
+        var json = raw.substring(start, end + 1)
+        // Chhote models aksar trailing commas chhod dete hain — saaf karo.
+        json = json.replace(Regex(",\\s*([}\\]])"), "$1")
+        return json
     }
 
     private fun bindViews() {
