@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -228,6 +229,11 @@ class TutorEngine(private val context: Context) {
      * Jawab me JSON aata hai (parse karna caller ka kaam).
      * IO dispatcher pe chalao — generateResponse block karta hai.
      */
+    /**
+     * Topic pe quiz banao — STREAMING generation (wahi rasta jo explain() me
+     * proven hai). Blocking generateResponse kabhi-kabhi atak jata hai.
+     * IO dispatcher pe chalao, 4 min timeout ke saath.
+     */
     suspend fun generateQuiz(topic: String, language: AppLanguage = Languages.ALL[0]): Result<String> = withContext(Dispatchers.IO) {
         val engine = llm ?: return@withContext Result.failure(
             IllegalStateException("model-not-ready")
@@ -237,7 +243,7 @@ class TutorEngine(private val context: Context) {
         }
         var timedOut = false
         try {
-            Log.d(TAG, "generateQuiz start: $topic")
+            Log.d(TAG, "generateQuiz start (streaming): $topic")
             // Chhote model ko example + adhura JSON deke shuru karwao —
             // isse valid JSON aane ke chance kaafi badh jaate hain.
             val prompt = wrapChatTemplate(
@@ -249,11 +255,34 @@ class TutorEngine(private val context: Context) {
                 "Ab \"$topic\" par 5 questions ka JSON shuru karo:\n" +
                 "{\"questions\":["
             )
+            accum.setLength(0)
+            val done = CompletableDeferred<String>()
+            var lastLogged = 0
+            activeListener = object : StreamListener {
+                override fun onPartial(fullText: String) {
+                    if (fullText.length - lastLogged >= 500) {
+                        lastLogged = fullText.length
+                        Log.d(TAG, "generateQuiz progress: ${fullText.length} chars")
+                    }
+                }
+                override fun onDone() {
+                    done.complete(accum.toString())
+                }
+                override fun onError(message: String) {
+                    done.completeExceptionally(Exception(message))
+                }
+            }
+            try {
+                engine.generateResponseAsync(prompt)
+            } catch (e: Exception) {
+                sharedGenerating.set(false)
+                throw e
+            }
             // 4 min timeout — CPU slow hai, par isse zyada matlab atak gaya.
             val raw = withTimeout(240_000) {
-                engine.generateResponse(prompt)
+                done.await()
             }.trim()
-            Log.d(TAG, "generateQuiz raw length: ${raw.length}")
+            Log.d(TAG, "generateQuiz done, raw length: ${raw.length}")
             // Model prompt me diye adhure JSON '{"questions":[' ke aage se
             // continue karta hai — poora JSON jodne ke liye prefix wapas lagao.
             // (Agar model ne khud poora '{"questions"' likh diya to rehne do.)
@@ -263,17 +292,19 @@ class TutorEngine(private val context: Context) {
             }
             Result.success(fixed)
         } catch (e: TimeoutCancellationException) {
-            // Blocking native call background me atak sakti hai — sharedGenerating
-            // ko true hi rehne do taaki dobara concurrent call na ho (crash se bacho).
+            // Background generation abhi bhi chal rahi ho sakti hai —
+            // sharedGenerating ko true hi rehne do (concurrent call = crash).
             // User ko app restart karni hogi.
             timedOut = true
-            Log.w(TAG, "generateQuiz timed out (4 min) — engine may be stuck")
-            Result.failure(Exception("Quiz atak gaya hai. App band karke dobara kholo."))
+            Log.w(TAG, "generateQuiz timed out (4 min)")
+            Result.failure(Exception("Quiz banane me bahut time lag raha hai. App band karke dobara kholo."))
         } catch (e: Exception) {
             Log.e(TAG, "generateQuiz failed", e)
             Result.failure(e)
         } finally {
             if (!timedOut) {
+                // Success pe result listener pehle hi reset kar chuka hai;
+                // dobara false karna harmless hai.
                 sharedGenerating.set(false)
             }
         }
