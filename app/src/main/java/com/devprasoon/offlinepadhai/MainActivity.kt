@@ -696,7 +696,7 @@ class MainActivity : AppCompatActivity() {
             else -> ""
         }
         val newLocales = if (tags.isEmpty()) {
-            LocaleListCompat.getEmptyList()
+            LocaleListCompat.getEmptyLocaleList()
         } else {
             LocaleListCompat.forLanguageTags(tags)
         }
