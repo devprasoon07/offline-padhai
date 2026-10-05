@@ -6,7 +6,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
-import com.google.mlkit.vision.text.latin.LatinTextRecognizerOptions
+import com.google.mlkit.vision.text.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -36,7 +36,7 @@ object OcrProcessor {
     }
 
     private val latinRecognizer: TextRecognizer by lazy {
-        TextRecognition.getClient(LatinTextRecognizerOptions.DEFAULT)
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT)
     }
 
     /** Photo file se text nikalo. */
