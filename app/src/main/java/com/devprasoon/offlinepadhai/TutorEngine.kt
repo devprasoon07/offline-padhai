@@ -233,8 +233,32 @@ class TutorEngine(private val context: Context) {
      * Topic pe quiz banao — STREAMING generation (wahi rasta jo explain() me
      * proven hai). Blocking generateResponse kabhi-kabhi atak jata hai.
      * IO dispatcher pe chalao, 4 min timeout ke saath.
+     * 3 attempts tak retry karta hai — 100% reliable generation ke liye.
      */
     suspend fun generateQuiz(topic: String, language: AppLanguage = Languages.ALL[0]): Result<String> = withContext(Dispatchers.IO) {
+        var lastError: Exception? = null
+        // 3 attempts — pehla fail ho to dobara try karo
+        for (attempt in 1..3) {
+            val result = generateQuizOnce(topic, language, attempt)
+            if (result.isSuccess) {
+                val json = result.getOrThrow()
+                // Validate: kam se kam 3 valid questions hone chahiye
+                if (countValidQuestions(json) >= 3) {
+                    if (attempt > 1) Log.d(TAG, "generateQuiz succeeded on attempt $attempt")
+                    return@withContext Result.success(json)
+                }
+                Log.w(TAG, "generateQuiz attempt $attempt: only ${countValidQuestions(json)} valid questions, retrying")
+                lastError = Exception("Quiz me kaafi questions nahi bane")
+            } else {
+                lastError = result.exceptionOrNull() as? Exception
+                Log.w(TAG, "generateQuiz attempt $attempt failed, retrying", lastError)
+            }
+        }
+        Result.failure(lastError ?: Exception("Quiz nahi ban paya. Dobara try karo."))
+    }
+
+    /** Ek baar quiz generate karo (internal). */
+    private suspend fun generateQuizOnce(topic: String, language: AppLanguage, attempt: Int): Result<String> = withContext(Dispatchers.IO) {
         val engine = llm ?: return@withContext Result.failure(
             IllegalStateException("model-not-ready")
         )
@@ -243,14 +267,16 @@ class TutorEngine(private val context: Context) {
         }
         var timedOut = false
         try {
-            Log.d(TAG, "generateQuiz start (streaming): $topic")
+            Log.d(TAG, "generateQuiz start (streaming): $topic (attempt $attempt)")
             // Chhote model ko example + adhura JSON deke shuru karwao —
             // isse valid JSON aane ke chance kaafi badh jaate hain.
+            // Quality ke liye: varied difficulty + plausible distractors.
             val prompt = wrapChatTemplate(
                 "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
                 "questions banao, ${language.promptName} me. " +
                 "RULES: Sirf valid JSON do, koi extra text, koi explanation nahi. " +
-                "Har question me exactly 4 options hon, answer 0-3 ke beech. " +
+                "Har question clear aur specific ho. 4 plausible options do (sirf 1 sahi), answer 0-3 ke beech. " +
+                "Difficulty mix karo: 2 easy, 2 medium, 1 hard. " +
                 "Example: {\"questions\":[{\"q\":\"Paani ka formula kya hai?\",\"options\":[\"H2O\",\"CO2\",\"O2\",\"N2\"],\"answer\":0}]}\n" +
                 "Ab \"$topic\" par 5 questions ka JSON shuru karo:\n" +
                 "{\"questions\":["
@@ -307,6 +333,27 @@ class TutorEngine(private val context: Context) {
                 // dobara false karna harmless hai.
                 sharedGenerating.set(false)
             }
+        }
+    }
+
+    /** Quiz JSON me kitne valid questions hain — retry decision ke liye. */
+    private fun countValidQuestions(raw: String): Int {
+        return try {
+            val json = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1)
+            val root = org.json.JSONObject(json)
+            val arr = root.optJSONArray("questions") ?: return 0
+            var count = 0
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                if (o.optString("q", "").trim().isEmpty()) continue
+                val opts = o.optJSONArray("options") ?: continue
+                if (opts.length() != 4) continue
+                if (o.optInt("answer", -1) !in 0..3) continue
+                count++
+            }
+            count
+        } catch (e: Exception) {
+            0
         }
     }
 

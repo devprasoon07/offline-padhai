@@ -8,7 +8,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -46,6 +45,13 @@ class QuizActivity : AppCompatActivity() {
     private var currentIndex = 0
     private var selectedOption = -1
     private var score = 0
+    private val userAnswers = mutableListOf<Int>()
+
+    private lateinit var resultScreen: LinearLayout
+    private lateinit var tvFinalScore: TextView
+    private lateinit var resultContainer: LinearLayout
+    private lateinit var btnQuizAgain: Button
+    private lateinit var btnQuizClose: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,8 +119,10 @@ class QuizActivity : AppCompatActivity() {
         questions = qs
         currentIndex = 0
         score = 0
+        userAnswers.clear()
         topicScreen.visibility = View.GONE
         quizScreen.visibility = View.VISIBLE
+        resultScreen.visibility = View.GONE
         showQuestion()
     }
 
@@ -146,28 +154,78 @@ class QuizActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.quiz_pick_option), Toast.LENGTH_SHORT).show()
             return
         }
+        userAnswers.add(selectedOption)
         if (selectedOption == questions[currentIndex].answer) score++
         currentIndex++
         if (currentIndex >= questions.size) {
-            showScore()
+            showResults()
         } else {
             showQuestion()
         }
     }
 
-    private fun showScore() {
+    /** Detailed results: score + har question ka sahi jawab. */
+    private fun showResults() {
         quizScreen.visibility = View.GONE
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.quiz_done_title))
-            .setMessage(getString(R.string.quiz_score_msg, questions.size, score))
-            .setPositiveButton(getString(R.string.quiz_again)) { _, _ ->
-                topicScreen.visibility = View.VISIBLE
-                etTopic.text?.clear()
-                showStatus("")
+        resultScreen.visibility = View.VISIBLE
+
+        tvFinalScore.text = getString(R.string.quiz_score_msg, questions.size, score)
+
+        resultContainer.removeAllViews()
+        questions.forEachIndexed { idx, q ->
+            val userAns = userAnswers.getOrNull(idx) ?: -1
+            val isCorrect = userAns == q.answer
+
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(32, 24, 32, 24)
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                params.topMargin = 16
+                layoutParams = params
+                setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
             }
-            .setNegativeButton(getString(R.string.quiz_close)) { _, _ -> finish() }
-            .setCancelable(false)
-            .show()
+
+            val qText = TextView(this).apply {
+                text = "${idx + 1}. ${q.q}"
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }
+            card.addView(qText)
+
+            q.options.forEachIndexed { optIdx, opt ->
+                val optText = TextView(this).apply {
+                    val marker = when {
+                        optIdx == q.answer -> "✓ "
+                        optIdx == userAns && !isCorrect -> "✗ "
+                        else -> "  "
+                    }
+                    text = "$marker$opt"
+                    textSize = 14f
+                    setPadding(0, 8, 0, 8)
+                    setTextColor(
+                        when {
+                            optIdx == q.answer -> 0xFF2E7D32.toInt() // green
+                            optIdx == userAns && !isCorrect -> 0xFFC62828.toInt() // red
+                            else -> 0xFF666666.toInt()
+                        }
+                    )
+                }
+                card.addView(optText)
+            }
+
+            resultContainer.addView(card)
+        }
+
+        btnQuizAgain.setOnClickListener {
+            resultScreen.visibility = View.GONE
+            topicScreen.visibility = View.VISIBLE
+            etTopic.text?.clear()
+            showStatus("")
+        }
+        btnQuizClose.setOnClickListener { finish() }
     }
 
     private fun showStatus(msg: String) {
@@ -229,6 +287,11 @@ class QuizActivity : AppCompatActivity() {
             findViewById(R.id.opt3)
         )
         btnNext = findViewById(R.id.btnNext)
+        resultScreen = findViewById(R.id.resultScreen)
+        tvFinalScore = findViewById(R.id.tvFinalScore)
+        resultContainer = findViewById(R.id.resultContainer)
+        btnQuizAgain = findViewById(R.id.btnQuizAgain)
+        btnQuizClose = findViewById(R.id.btnQuizClose)
     }
 
     override fun onDestroy() {

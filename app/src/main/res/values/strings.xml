@@ -62,6 +62,7 @@
     <string name="quiz_pick_option">Pehle ek option chuno</string>
     <string name="quiz_qnum">Sawal %1$d / %2$d</string>
     <string name="quiz_done_title">Quiz khatam!</string>
+    <string name="quiz_results_title">Quiz Results</string>
     <string name="quiz_score_msg">%1$d me se %2$d sahi! 🎉</string>
     <string name="err_empty_topic">Pehle topic likho</string>
 
