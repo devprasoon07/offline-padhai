@@ -6,7 +6,9 @@ import android.os.Looper
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
@@ -233,7 +235,9 @@ class TutorEngine(private val context: Context) {
         if (!sharedGenerating.compareAndSet(false, true)) {
             return@withContext Result.failure(IllegalStateException("busy"))
         }
+        var timedOut = false
         try {
+            Log.d(TAG, "generateQuiz start: $topic")
             // Chhote model ko example + adhura JSON deke shuru karwao —
             // isse valid JSON aane ke chance kaafi badh jaate hain.
             val prompt = wrapChatTemplate(
@@ -245,19 +249,33 @@ class TutorEngine(private val context: Context) {
                 "Ab \"$topic\" par 5 questions ka JSON shuru karo:\n" +
                 "{\"questions\":["
             )
-            var raw = engine.generateResponse(prompt).trim()
+            // 4 min timeout — CPU slow hai, par isse zyada matlab atak gaya.
+            val raw = withTimeout(240_000) {
+                engine.generateResponse(prompt)
+            }.trim()
+            Log.d(TAG, "generateQuiz raw length: ${raw.length}")
             // Model prompt me diye adhure JSON '{"questions":[' ke aage se
             // continue karta hai — poora JSON jodne ke liye prefix wapas lagao.
             // (Agar model ne khud poora '{"questions"' likh diya to rehne do.)
-            if (!raw.startsWith("{\"questions\"")) {
-                raw = "{\"questions\":[" + raw
+            var fixed = raw
+            if (!fixed.startsWith("{\"questions\"")) {
+                fixed = "{\"questions\":[" + fixed
             }
-            Result.success(raw)
+            Result.success(fixed)
+        } catch (e: TimeoutCancellationException) {
+            // Blocking native call background me atak sakti hai — sharedGenerating
+            // ko true hi rehne do taaki dobara concurrent call na ho (crash se bacho).
+            // User ko app restart karni hogi.
+            timedOut = true
+            Log.w(TAG, "generateQuiz timed out (4 min) — engine may be stuck")
+            Result.failure(Exception("Quiz atak gaya hai. App band karke dobara kholo."))
         } catch (e: Exception) {
             Log.e(TAG, "generateQuiz failed", e)
             Result.failure(e)
         } finally {
-            sharedGenerating.set(false)
+            if (!timedOut) {
+                sharedGenerating.set(false)
+            }
         }
     }
 
