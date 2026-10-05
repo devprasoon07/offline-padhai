@@ -231,8 +231,10 @@ class MainActivity : AppCompatActivity() {
                     setHideBottomControls(false)
                 })
                 .start(this)
-        } catch (e: Exception) {
-            Log.w("MainActivity", "crop open failed, OCR seedha", e)
+        } catch (t: Throwable) {
+            // Kabhi chup-chaap fallback nahi — user ko dikhega ki crop khula nahi.
+            Log.w("MainActivity", "crop open failed, OCR seedha", t)
+            showStatus("Crop nahi khul paya — seedha poori photo padh raha hu.")
             pendingCropSource = null
             runOcr(photo)
         }
