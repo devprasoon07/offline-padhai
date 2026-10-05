@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomSheet: NestedScrollView
     private lateinit var tvSheetHint: TextView
     private lateinit var progressOcr: ProgressBar
+    private lateinit var inputContent: LinearLayout
     private lateinit var resultContent: LinearLayout
     private lateinit var etQuestion: EditText
     private lateinit var btnMic: ImageButton
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
             if (!tutor.isReady()) {
                 if (!tutor.isModelPresent()) {
                     cardSetup.visibility = View.VISIBLE
+                    inputContent.visibility = View.GONE
                     resultContent.visibility = View.GONE
                     sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
                 } else {
@@ -277,14 +279,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** OCR/voice ke baad sheet kholo taaki sawal dikhe. Input hamesha visible hai. */
     private fun revealResultContent() {
-        if (resultContent.visibility != View.VISIBLE) {
-            resultContent.visibility = View.VISIBLE
-            resultContent.startAnimation(
-                AnimationUtils.loadAnimation(this, R.anim.slide_up)
-            )
-        }
         cardSetup.visibility = View.GONE
+        if (inputContent.visibility != View.VISIBLE) {
+            inputContent.visibility = View.VISIBLE
+        }
         sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
@@ -293,11 +293,13 @@ class MainActivity : AppCompatActivity() {
     private fun checkModelAndInit() {
         if (!tutor.isModelPresent()) {
             cardSetup.visibility = View.VISIBLE
+            inputContent.visibility = View.GONE
             resultContent.visibility = View.GONE
             sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
             return
         }
         cardSetup.visibility = View.GONE
+        inputContent.visibility = View.VISIBLE
         showStatus(getString(R.string.status_model_loading))
         lifecycleScope.launch {
             val result = tutor.init()
@@ -313,6 +315,7 @@ class MainActivity : AppCompatActivity() {
         if (!tutor.isReady()) {
             if (!tutor.isModelPresent()) {
                 cardSetup.visibility = View.VISIBLE
+                inputContent.visibility = View.GONE
                 resultContent.visibility = View.GONE
                 sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
             } else {
@@ -328,6 +331,10 @@ class MainActivity : AppCompatActivity() {
         hideKeyboard()
         conversation.clear()
         resetAnswerUi()
+        // Direct query me bhi thinking/answer dikhe — result section kholo.
+        if (resultContent.visibility != View.VISIBLE) {
+            resultContent.visibility = View.VISIBLE
+        }
 
         tutor.explain(question, emptyList(), AppPrefs.getLanguage(this), object : TutorEngine.StreamListener {
             override fun onPartial(fullText: String) {
@@ -631,6 +638,7 @@ class MainActivity : AppCompatActivity() {
         bottomSheet = findViewById(R.id.bottomSheet)
         tvSheetHint = findViewById(R.id.tvSheetHint)
         progressOcr = findViewById(R.id.progressOcr)
+        inputContent = findViewById(R.id.inputContent)
         resultContent = findViewById(R.id.resultContent)
         etQuestion = findViewById(R.id.etQuestion)
         btnMic = findViewById(R.id.btnMic)

@@ -124,13 +124,12 @@
                 android:indeterminateTint="@color/accent_amber"
                 android:visibility="gone" />
 
-            <!-- Expanded: result content -->
+            <!-- Input: hamesha visible taaki bina photo ke seedha type karke puchh sako -->
             <LinearLayout
-                android:id="@+id/resultContent"
+                android:id="@+id/inputContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tvQuestionLabel"
@@ -222,6 +221,15 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp" />
                 </LinearLayout>
+            </LinearLayout>
+
+            <!-- Result: jawab/thinking aane pe visible -->
+            <LinearLayout
+                android:id="@+id/resultContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
 
                 <!-- Thinking row -->
                 <LinearLayout

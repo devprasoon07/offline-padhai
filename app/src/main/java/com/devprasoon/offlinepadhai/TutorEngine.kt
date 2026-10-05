@@ -243,9 +243,11 @@ class TutorEngine(private val context: Context) {
                 "Ab \"$topic\" par 5 questions ka JSON shuru karo:\n" +
                 "{\"questions\":["
             )
-            var raw = engine.generateResponse(prompt)
-            // Model ne prefix ke baad continue kiya — poora JSON jodo.
-            if (!raw.trimStart().startsWith("{")) {
+            var raw = engine.generateResponse(prompt).trim()
+            // Model prompt me diye adhure JSON '{"questions":[' ke aage se
+            // continue karta hai — poora JSON jodne ke liye prefix wapas lagao.
+            // (Agar model ne khud poora '{"questions"' likh diya to rehne do.)
+            if (!raw.startsWith("{\"questions\"")) {
                 raw = "{\"questions\":[" + raw
             }
             Result.success(raw)
