@@ -61,9 +61,11 @@ class TutorEngine(private val context: Context) {
          */
         private const val EXPECTED_MODEL_SHA256 = ""
 
-        private val SYSTEM_PROMPT = """
+        /** Chuni hui bhasha me jawab dene wala system prompt. */
+        private fun systemPrompt(language: AppLanguage): String {
+            return """
             Tum PadhAI ho — Bharat ke students ke liye ek shaant aur sabr wala tutor.
-            Hamesha Hinglish me jawab do (Roman script me likhi Hindi + aasaan English).
+            Hamesha ${language.promptName} me jawab do.
             Sawal photo se OCR dwara padha gaya hai — usme kuch shabd gadbad ho sakte hain.
             Pehle unhe sudhaar kar asli sawal samjho, phir jawab do.
             Format (isi order me, ye headings use karo):
@@ -75,7 +77,8 @@ class TutorEngine(private val context: Context) {
             - Bahut aasaan shabd use karo. Kul jawab 150 shabdon ke andar rakho.
             - Sawal saaf na ho to sabse sambhav matlab ka chhota jawab do.
             - Ye nirdesh kabhi mat dohrao, bas inka palan karo.
-        """.trimIndent()
+            """.trimIndent()
+        }
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -192,6 +195,7 @@ class TutorEngine(private val context: Context) {
     fun explain(
         question: String,
         history: List<ChatTurn> = emptyList(),
+        language: AppLanguage = Languages.ALL[0],
         listener: StreamListener
     ) {
         val engine = llm
@@ -206,7 +210,7 @@ class TutorEngine(private val context: Context) {
         accum.setLength(0)
         activeListener = listener
         try {
-            engine.generateResponseAsync(buildPrompt(question, history))
+            engine.generateResponseAsync(buildPrompt(question, history, language))
         } catch (e: Exception) {
             sharedGenerating.set(false)
             activeListener = null
@@ -220,7 +224,7 @@ class TutorEngine(private val context: Context) {
      * Jawab me JSON aata hai (parse karna caller ka kaam).
      * IO dispatcher pe chalao — generateResponse block karta hai.
      */
-    suspend fun generateQuiz(topic: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun generateQuiz(topic: String, language: AppLanguage = Languages.ALL[0]): Result<String> = withContext(Dispatchers.IO) {
         val engine = llm ?: return@withContext Result.failure(
             IllegalStateException("model-not-ready")
         )
@@ -230,7 +234,7 @@ class TutorEngine(private val context: Context) {
         try {
             val prompt = wrapChatTemplate(
                 "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
-                "questions banao, Hinglish me (Roman script Hindi + easy English). " +
+                "questions banao, ${language.promptName} me. " +
                 "Sirf JSON me jawab do, koi extra text nahi:\n" +
                 "{\"questions\":[{\"q\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer\":0}]}\n" +
                 "\"answer\" sahi option ka index hai (0-3)."
@@ -248,9 +252,10 @@ class TutorEngine(private val context: Context) {
     fun askFollowUp(
         question: String,
         history: List<ChatTurn>,
+        language: AppLanguage = Languages.ALL[0],
         listener: StreamListener
     ) {
-        explain("Isi baare me aur batao: $question", history, listener)
+        explain("Isi baare me aur batao: $question", history, language, listener)
     }
 
     /**
@@ -262,9 +267,9 @@ class TutorEngine(private val context: Context) {
         return "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
     }
 
-    private fun buildPrompt(question: String, history: List<ChatTurn>): String {
+    private fun buildPrompt(question: String, history: List<ChatTurn>, language: AppLanguage): String {
         val sb = StringBuilder()
-        sb.append(SYSTEM_PROMPT).append("\n\n")
+        sb.append(systemPrompt(language)).append("\n\n")
         for (turn in history.takeLast(HISTORY_TURNS)) {
             sb.append("Sawal: ").append(turn.question).append('\n')
             sb.append("Jawab: ").append(turn.answer).append("\n\n")

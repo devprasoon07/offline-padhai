@@ -83,7 +83,7 @@ class QuizActivity : AppCompatActivity() {
         showStatus(getString(R.string.quiz_making))
 
         lifecycleScope.launch {
-            val result = tutor.generateQuiz(topic)
+            val result = tutor.generateQuiz(topic, AppPrefs.getLanguage(this@QuizActivity))
             progressQuiz.visibility = View.GONE
             btnMakeQuiz.isEnabled = true
             if (result.isSuccess) {

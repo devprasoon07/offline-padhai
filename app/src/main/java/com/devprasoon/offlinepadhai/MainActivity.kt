@@ -19,6 +19,9 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.Spinner
+import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.view.PreviewView
@@ -59,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etQuestion: EditText
     private lateinit var btnMic: ImageButton
     private lateinit var btnExplain: Button
+    private lateinit var spinnerLanguage: Spinner
     private lateinit var rowThinking: LinearLayout
     private lateinit var tvAnswer: TextView
     private lateinit var rowAnswerActions: LinearLayout
@@ -323,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         conversation.clear()
         resetAnswerUi()
 
-        tutor.explain(question, emptyList(), object : TutorEngine.StreamListener {
+        tutor.explain(question, emptyList(), AppPrefs.getLanguage(this), object : TutorEngine.StreamListener {
             override fun onPartial(fullText: String) {
                 updateAnswerThrottled(fullText)
                 if (rowThinking.visibility == View.VISIBLE) {
@@ -408,7 +412,7 @@ class MainActivity : AppCompatActivity() {
         rowThinking.visibility = View.VISIBLE
         btnSend.isEnabled = false
 
-        tutor.askFollowUp(question, conversation.toList(), object : TutorEngine.StreamListener {
+        tutor.askFollowUp(question, conversation.toList(), AppPrefs.getLanguage(this), object : TutorEngine.StreamListener {
             override fun onPartial(fullText: String) {
                 updateAnswerThrottled(baseText + fullText)
                 if (rowThinking.visibility == View.VISIBLE) {
@@ -629,6 +633,8 @@ class MainActivity : AppCompatActivity() {
         etQuestion = findViewById(R.id.etQuestion)
         btnMic = findViewById(R.id.btnMic)
         btnExplain = findViewById(R.id.btnExplain)
+        spinnerLanguage = findViewById(R.id.spinnerLanguage)
+        setupLanguageSpinner()
         rowThinking = findViewById(R.id.rowThinking)
         tvAnswer = findViewById(R.id.tvAnswer)
         rowAnswerActions = findViewById(R.id.rowAnswerActions)
@@ -642,6 +648,31 @@ class MainActivity : AppCompatActivity() {
         btnSend = findViewById(R.id.btnSend)
         cardSetup = findViewById(R.id.cardSetup)
         btnRecheck = findViewById(R.id.btnRecheck)
+    }
+
+    /** Bhasha dropdown: user jis bhasha me chahe jawab paye. Choice save rehti hai. */
+    private fun setupLanguageSpinner() {
+        val names = Languages.ALL.map { it.displayName }
+        val adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, names
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerLanguage.adapter = adapter
+        val current = AppPrefs.getLanguage(this)
+        spinnerLanguage.setSelection(
+            Languages.ALL.indexOfFirst { it.code == current.code }.coerceAtLeast(0),
+            false
+        )
+        spinnerLanguage.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?, view: View?, position: Int, id: Long
+            ) {
+                AppPrefs.setLanguage(this@MainActivity, Languages.ALL[position].code)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     override fun onDestroy() {
