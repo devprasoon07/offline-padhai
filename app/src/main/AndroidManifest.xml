@@ -22,5 +22,14 @@
         <activity
             android:name=".QuizActivity"
             android:exported="false" />
+
+        <!-- MediaPipe LLM engine ko OpenCL chahiye. Android 12+ pe ye system
+             libraries manifest me declare kiye bina load nahi hoti (dlopen fail:
+             "libvndksupport.so not found"). required=false taaki aisi device pe
+             bhi install ho jaye jahan ye libs na hon. -->
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
     </application>
 </manifest>
