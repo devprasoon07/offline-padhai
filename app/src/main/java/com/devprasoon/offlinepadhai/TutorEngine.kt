@@ -220,11 +220,13 @@ class TutorEngine(private val context: Context) {
             return@withContext Result.failure(IllegalStateException("busy"))
         }
         try {
-            val prompt = "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
+            val prompt = wrapChatTemplate(
+                "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
                 "questions banao, Hinglish me (Roman script Hindi + easy English). " +
                 "Sirf JSON me jawab do, koi extra text nahi:\n" +
                 "{\"questions\":[{\"q\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer\":0}]}\n" +
                 "\"answer\" sahi option ka index hai (0-3)."
+            )
             Result.success(engine.generateResponse(prompt))
         } catch (e: Exception) {
             Log.e(TAG, "generateQuiz failed", e)
@@ -243,6 +245,15 @@ class TutorEngine(private val context: Context) {
         explain("Isi baare me aur batao: $question", history, listener)
     }
 
+    /**
+     * Gemma IT models ko chat template chahiye hota hai — bina
+     * <start_of_turn>/<end_of_turn> tokens ke model instructions ko
+     * follow karne ke bajaye repeat karne lagta hai.
+     */
+    private fun wrapChatTemplate(userText: String): String {
+        return "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
+    }
+
     private fun buildPrompt(question: String, history: List<ChatTurn>): String {
         val sb = StringBuilder()
         sb.append(SYSTEM_PROMPT).append("\n\n")
@@ -251,7 +262,7 @@ class TutorEngine(private val context: Context) {
             sb.append("Jawab: ").append(turn.answer).append("\n\n")
         }
         sb.append("Sawal: ").append(question).append("\nJawab:")
-        return sb.toString()
+        return wrapChatTemplate(sb.toString())
     }
 
     /**
