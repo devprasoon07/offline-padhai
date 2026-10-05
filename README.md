@@ -6,6 +6,21 @@ An on-device AI tutor for students. Snap a photo of any textbook question and ge
 step-by-step explanation in Hinglish — with zero internet. Built for the
 iQOO Hackathon 2026 Grand Finale (solo).
 
+## Features
+
+- **Photo → explanation** — CameraX se photo lo, ML Kit OCR sawal padhta hai,
+  Gemma 2B-IT (MediaPipe, fully offline) Hinglish me step-by-step samjhata hai.
+- **History** — har explanation auto-save hoti hai (device pe, `history.json`);
+  purane Q&A dobara kholo, 200 entries tak.
+- **Bookmarks** — star dabao, important jawab save karo; History me filter bhi hai.
+- **Quiz mode** — topic likho, AI 5 multiple-choice questions banata hai;
+  ek-ek karke jawab do, aakhir me score.
+- **Voice input + TTS** — mic dabake sawal bolo (offline recognition),
+  speaker dabake jawab suno (Hindi TTS, English fallback).
+- **Share** — sawal+jawab text me share karo.
+- **Follow-ups** — jawab ke baad aur puchho, context yaad rehta hai.
+- **Airplane-mode ready** — sab kuch phone pe, internet ki zaroorat nahi.
+
 ---
 
 ## Architecture

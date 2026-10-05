@@ -1,8 +1,13 @@
 package com.devprasoon.offlinepadhai
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
@@ -12,6 +17,7 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.view.PreviewView
@@ -19,31 +25,45 @@ import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 
 /**
  * Offline PadhAI — on-device AI tutor.
  *
  * Flow: CameraX photo -> ML Kit OCR -> MediaPipe Gemma -> Hinglish explanation.
  * Sab kuch phone pe, internet ki zaroorat nahi.
+ *
+ * Features: History (auto-save), Bookmarks, Quiz mode, Voice input + TTS, Share.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var cameraManager: CameraManager
     private lateinit var tutor: TutorEngine
     private lateinit var sheetBehavior: BottomSheetBehavior<View>
+    private lateinit var historyManager: HistoryManager
 
     private lateinit var previewView: PreviewView
     private lateinit var btnCapture: ImageButton
+    private lateinit var btnHistory: MaterialButton
+    private lateinit var btnQuiz: MaterialButton
     private lateinit var bottomSheet: NestedScrollView
     private lateinit var tvSheetHint: TextView
     private lateinit var progressOcr: ProgressBar
     private lateinit var resultContent: LinearLayout
     private lateinit var etQuestion: EditText
+    private lateinit var btnMic: ImageButton
     private lateinit var btnExplain: Button
     private lateinit var rowThinking: LinearLayout
     private lateinit var tvAnswer: TextView
+    private lateinit var rowAnswerActions: LinearLayout
+    private lateinit var btnBookmark: ImageButton
+    private lateinit var btnSpeak: ImageButton
+    private lateinit var btnShare: ImageButton
     private lateinit var dividerFollow: View
     private lateinit var tvFollowLabel: TextView
     private lateinit var followRow: LinearLayout
@@ -55,12 +75,47 @@ class MainActivity : AppCompatActivity() {
     /** Follow-up context ke liye baatcheet yaad rakho. */
     private val conversation = mutableListOf<TutorEngine.ChatTurn>()
 
+    /** Abhi screen pe jo Q&A hai, uska history id (bookmark ke liye). */
+    private var currentHistoryId: String? = null
+
+    /** TTS */
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
                 startCamera()
             } else {
                 showStatus(getString(R.string.err_permission))
+            }
+        }
+
+    /** History se wapas — sawal+jawab load karo. */
+    private val historyLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val data = result.data ?: return@registerForActivityResult
+                val id = data.getStringExtra(HistoryActivity.EXTRA_ID).orEmpty()
+                val q = data.getStringExtra(HistoryActivity.EXTRA_QUESTION).orEmpty()
+                val a = data.getStringExtra(HistoryActivity.EXTRA_ANSWER).orEmpty()
+                val bookmarked = data.getBooleanExtra(HistoryActivity.EXTRA_BOOKMARKED, false)
+                if (q.isNotEmpty() || a.isNotEmpty()) {
+                    loadHistoryItem(id, q, a, bookmarked)
+                }
+            }
+        }
+
+    /** Voice input ka nateeja — etQuestion me daalo. */
+    private val voiceLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                val spoken = matches?.firstOrNull()?.trim()
+                if (!spoken.isNullOrEmpty()) {
+                    etQuestion.setText(spoken)
+                    revealResultContent()
+                }
             }
         }
 
@@ -86,11 +141,35 @@ class MainActivity : AppCompatActivity() {
 
         cameraManager = CameraManager(this, this, previewView)
         tutor = TutorEngine(this)
+        historyManager = HistoryManager(this)
+        initTts()
 
         btnCapture.setOnClickListener { capturePhoto() }
+        btnHistory.setOnClickListener {
+            historyLauncher.launch(Intent(this, HistoryActivity::class.java))
+        }
+        btnQuiz.setOnClickListener {
+            // Model abhi load ho raha ho to Quiz mat kholo — warna 1.5 GB model
+            // do baar RAM me load hokar OOM crash ho sakta hai (sharedLlm abhi null hai).
+            if (!tutor.isReady()) {
+                if (!tutor.isModelPresent()) {
+                    cardSetup.visibility = View.VISIBLE
+                    resultContent.visibility = View.GONE
+                    sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+                } else {
+                    showStatus(getString(R.string.err_not_ready))
+                }
+                return@setOnClickListener
+            }
+            startActivity(Intent(this, QuizActivity::class.java))
+        }
         btnExplain.setOnClickListener { explainQuestion() }
         btnSend.setOnClickListener { sendFollowUp() }
         btnRecheck.setOnClickListener { checkModelAndInit() }
+        btnMic.setOnClickListener { startVoiceInput() }
+        btnBookmark.setOnClickListener { toggleBookmark() }
+        btnSpeak.setOnClickListener { toggleSpeak() }
+        btnShare.setOnClickListener { shareAnswer() }
 
         if (hasCameraPermission()) {
             startCamera()
@@ -218,7 +297,17 @@ class MainActivity : AppCompatActivity() {
                 dividerFollow.visibility = View.VISIBLE
                 tvFollowLabel.visibility = View.VISIBLE
                 followRow.visibility = View.VISIBLE
-                conversation.add(TutorEngine.ChatTurn(question, tvAnswer.text.toString()))
+                rowAnswerActions.visibility = View.VISIBLE
+                val finalAnswer = tvAnswer.text.toString()
+                conversation.add(TutorEngine.ChatTurn(question, finalAnswer))
+                // History me auto-save (background me, UI block nahi)
+                lifecycleScope.launch {
+                    val item = withContext(Dispatchers.IO) {
+                        historyManager.save(question, finalAnswer)
+                    }
+                    currentHistoryId = item.id
+                    updateBookmarkIcon(item.bookmarked)
+                }
             }
 
             override fun onError(message: String) {
@@ -236,7 +325,11 @@ class MainActivity : AppCompatActivity() {
         dividerFollow.visibility = View.GONE
         tvFollowLabel.visibility = View.GONE
         followRow.visibility = View.GONE
+        rowAnswerActions.visibility = View.GONE
         btnExplain.isEnabled = false
+        // Naya sawal = nayi history entry banegi
+        currentHistoryId = null
+        updateBookmarkIcon(false)
     }
 
     private fun sendFollowUp() {
@@ -260,9 +353,16 @@ class MainActivity : AppCompatActivity() {
 
             override fun onDone() {
                 btnSend.isEnabled = true
-                conversation.add(
-                    TutorEngine.ChatTurn(question, tvAnswer.text.toString().removePrefix(baseText))
-                )
+                val newAnswer = tvAnswer.text.toString().removePrefix(baseText)
+                conversation.add(TutorEngine.ChatTurn(question, newAnswer))
+                // History entry ka jawab update karo
+                val id = currentHistoryId
+                if (id != null) {
+                    val fullText = tvAnswer.text.toString()
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        historyManager.updateAnswer(id, fullText)
+                    }
+                }
             }
 
             override fun onError(message: String) {
@@ -271,6 +371,173 @@ class MainActivity : AppCompatActivity() {
                 showStatus(message)
             }
         })
+    }
+
+    // ---------- History se load ----------
+
+    private fun loadHistoryItem(id: String, question: String, answer: String, bookmarked: Boolean) {
+        hideKeyboard()
+        currentHistoryId = id.ifEmpty { null }
+        etQuestion.setText(question)
+        tvAnswer.text = answer
+        tvAnswer.visibility = View.VISIBLE
+        rowThinking.visibility = View.GONE
+        if (resultContent.visibility != View.VISIBLE) {
+            resultContent.visibility = View.VISIBLE
+        }
+        cardSetup.visibility = View.GONE
+        dividerFollow.visibility = View.VISIBLE
+        tvFollowLabel.visibility = View.VISIBLE
+        followRow.visibility = View.VISIBLE
+        rowAnswerActions.visibility = if (answer.isNotEmpty()) View.VISIBLE else View.GONE
+        btnExplain.isEnabled = true
+        updateBookmarkIcon(bookmarked)
+        // Follow-up isi context me chale
+        conversation.clear()
+        if (question.isNotEmpty() && answer.isNotEmpty()) {
+            conversation.add(TutorEngine.ChatTurn(question, answer))
+        }
+        sheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+    }
+
+    // ---------- Bookmark ----------
+
+    private fun toggleBookmark() {
+        val q = etQuestion.text.toString().trim()
+        val a = tvAnswer.text.toString().trim()
+        if (q.isEmpty() && a.isEmpty()) {
+            Toast.makeText(this, getString(R.string.err_empty_question), Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            val targetId = currentHistoryId ?: run {
+                val saved = withContext(Dispatchers.IO) { historyManager.save(q, a) }
+                currentHistoryId = saved.id
+                saved.id
+            }
+            val newState = withContext(Dispatchers.IO) {
+                historyManager.toggleBookmark(targetId)
+            }
+            updateBookmarkIcon(newState)
+            Toast.makeText(
+                this@MainActivity,
+                if (newState) "Bookmark ho gaya" else "Bookmark hataya",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun updateBookmarkIcon(bookmarked: Boolean) {
+        btnBookmark.setImageResource(
+            if (bookmarked) android.R.drawable.btn_star_big_on
+            else android.R.drawable.btn_star_big_off
+        )
+    }
+
+    // ---------- Voice input ----------
+
+    private fun startVoiceInput() {
+        try {
+            if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                Toast.makeText(
+                    this,
+                    "Voice input is device me available nahi",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Sawal bolo...")
+            }
+            voiceLauncher.launch(intent)
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Voice input failed", e)
+            Toast.makeText(this, "Voice input shuru nahi ho paya", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ---------- TTS ----------
+
+    private fun initTts() {
+        try {
+            tts = TextToSpeech(this) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    val engine = tts ?: return@TextToSpeech
+                    var res = engine.setLanguage(Locale("hi", "IN"))
+                    if (res == TextToSpeech.LANG_MISSING_DATA ||
+                        res == TextToSpeech.LANG_NOT_SUPPORTED
+                    ) {
+                        res = engine.setLanguage(Locale.ENGLISH)
+                    }
+                    ttsReady = res != TextToSpeech.LANG_MISSING_DATA &&
+                        res != TextToSpeech.LANG_NOT_SUPPORTED
+                    if (!ttsReady) {
+                        btnSpeak.isEnabled = false
+                        Toast.makeText(
+                            this,
+                            "TTS voice available nahi",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    ttsReady = false
+                    btnSpeak.isEnabled = false
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("MainActivity", "TTS init failed", e)
+            ttsReady = false
+        }
+    }
+
+    private fun toggleSpeak() {
+        val engine = tts
+        if (!ttsReady || engine == null) {
+            Toast.makeText(this, "TTS taiyaar nahi hai", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            if (engine.isSpeaking) {
+                engine.stop()
+            } else {
+                val text = tvAnswer.text.toString().trim()
+                if (text.isEmpty()) {
+                    Toast.makeText(
+                        this,
+                        "Pehle koi jawab generate karo",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return
+                }
+                engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "padhai_answer")
+            }
+        } catch (e: Exception) {
+            Log.w("MainActivity", "TTS speak failed", e)
+        }
+    }
+
+    // ---------- Share ----------
+
+    private fun shareAnswer() {
+        val q = etQuestion.text.toString().trim()
+        val a = tvAnswer.text.toString().trim()
+        if (q.isEmpty() || a.isEmpty()) {
+            Toast.makeText(this, "Pehle koi jawab generate karo", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = "Sawal: $q\n\nJawab: $a\n\n— Offline PadhAI (100% offline AI tutor)"
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_SUBJECT, "Offline PadhAI")
+        }
+        startActivity(Intent.createChooser(intent, "Share karo"))
     }
 
     // ---------- Helpers ----------
@@ -287,14 +554,21 @@ class MainActivity : AppCompatActivity() {
     private fun bindViews() {
         previewView = findViewById(R.id.previewView)
         btnCapture = findViewById(R.id.btnCapture)
+        btnHistory = findViewById(R.id.btnHistory)
+        btnQuiz = findViewById(R.id.btnQuiz)
         bottomSheet = findViewById(R.id.bottomSheet)
         tvSheetHint = findViewById(R.id.tvSheetHint)
         progressOcr = findViewById(R.id.progressOcr)
         resultContent = findViewById(R.id.resultContent)
         etQuestion = findViewById(R.id.etQuestion)
+        btnMic = findViewById(R.id.btnMic)
         btnExplain = findViewById(R.id.btnExplain)
         rowThinking = findViewById(R.id.rowThinking)
         tvAnswer = findViewById(R.id.tvAnswer)
+        rowAnswerActions = findViewById(R.id.rowAnswerActions)
+        btnBookmark = findViewById(R.id.btnBookmark)
+        btnSpeak = findViewById(R.id.btnSpeak)
+        btnShare = findViewById(R.id.btnShare)
         dividerFollow = findViewById(R.id.dividerFollow)
         tvFollowLabel = findViewById(R.id.tvFollowLabel)
         followRow = findViewById(R.id.followRow)
@@ -305,6 +579,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (e: Exception) {
+            Log.w("MainActivity", "TTS shutdown failed", e)
+        }
         cameraManager.shutdown()
         tutor.close()
         super.onDestroy()

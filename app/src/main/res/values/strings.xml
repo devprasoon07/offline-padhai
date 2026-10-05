@@ -33,4 +33,35 @@
     <string name="err_not_ready">Model abhi taiyaar nahi hai</string>
     <string name="err_empty_question">Pehle sawal ka text aane do</string>
     <string name="err_busy">Pehla jawab poora hone do</string>
+
+    <!-- Naye features -->
+    <string name="btn_history">History</string>
+    <string name="btn_quiz">Quiz</string>
+    <string name="mic_desc">Bolo</string>
+    <string name="bookmark_desc">Bookmark</string>
+    <string name="speak_desc">Suno</string>
+    <string name="share_desc">Share</string>
+
+    <string name="history_title">History</string>
+    <string name="bookmarks_only">Sirf bookmarks</string>
+    <string name="history_empty">Abhi koi history nahi — pehla sawal puchho!</string>
+    <string name="delete_title">Delete karein?</string>
+    <string name="delete_msg">Ye sawal history se hat jayega.</string>
+    <string name="delete_yes">Delete</string>
+    <string name="delete_no">Rahne do</string>
+
+    <string name="quiz_title">Quiz Mode</string>
+    <string name="quiz_topic_hint">Topic likho… (jaise: Photosynthesis)</string>
+    <string name="quiz_make">Quiz banao</string>
+    <string name="quiz_making">Quiz ban raha hai…</string>
+    <string name="quiz_error">Quiz banane me dikkat, phir try karo</string>
+    <string name="quiz_next">Next</string>
+    <string name="quiz_finish">Khatam</string>
+    <string name="quiz_again">Phir se</string>
+    <string name="quiz_close">Band karo</string>
+    <string name="quiz_pick_option">Pehle ek option chuno</string>
+    <string name="quiz_qnum">Sawal %1$d / %2$d</string>
+    <string name="quiz_done_title">Quiz khatam!</string>
+    <string name="quiz_score_msg">%1$d me se %2$d sahi! 🎉</string>
+    <string name="err_empty_topic">Pehle topic likho</string>
 </resources>

@@ -44,6 +44,16 @@ class TutorEngine(private val context: Context) {
         private const val HISTORY_TURNS = 4
 
         /**
+         * Process-wide shared model — 1.5 GB model RAM me ek hi baar load hota hai,
+         * chahe kitni bhi activities (Main, Quiz) apna TutorEngine banayein.
+         */
+        @Volatile
+        private var sharedLlm: LlmInference? = null
+
+        /** Ek waqt me ek hi generation — shared model ke liye shared guard. */
+        private val sharedGenerating = AtomicBoolean(false)
+
+        /**
          * Model file ka expected SHA-256 (hex, lowercase).
          * Khali hai to check skip hota hai (dev builds ke liye theek).
          * Release se pehle set karo: `sha256sum gemma-2b-it-gpu-int4.bin`
@@ -69,7 +79,6 @@ class TutorEngine(private val context: Context) {
     /** Options-level listener is active call ke listener ko forward karta hai. */
     @Volatile
     private var activeListener: StreamListener? = null
-    private val generating = AtomicBoolean(false)
     private val accum = StringBuilder()
 
     fun modelFile(): File = File(context.getExternalFilesDir(null), MODEL_FILE_NAME)
@@ -81,8 +90,16 @@ class TutorEngine(private val context: Context) {
     /**
      * Model load karo. Pehli baar me thoda waqt lag sakta hai.
      * GPU fail ho to CPU pe fallback.
+     *
+     * Shared model: agar kisi dusri activity ne pehle hi load kar rakha hai
+     * to wahi instance reuse hota hai — 1.5 GB dobara RAM me nahi aata.
      */
     suspend fun init(): Result<Unit> = withContext(Dispatchers.IO) {
+        sharedLlm?.let {
+            llm = it
+            Log.i(TAG, "Reusing shared LLM instance")
+            return@withContext Result.success(Unit)
+        }
         closeQuietly()
         val file = modelFile()
         if (!file.exists()) {
@@ -94,11 +111,15 @@ class TutorEngine(private val context: Context) {
         val gpuResult = tryInit(file, LlmInference.Backend.GPU)
         if (gpuResult.isSuccess) {
             Log.i(TAG, "LLM ready on GPU")
+            sharedLlm = llm
             return@withContext gpuResult
         }
         Log.w(TAG, "GPU backend failed, trying CPU", gpuResult.exceptionOrNull())
         val cpuResult = tryInit(file, LlmInference.Backend.CPU)
-        if (cpuResult.isSuccess) Log.i(TAG, "LLM ready on CPU")
+        if (cpuResult.isSuccess) {
+            Log.i(TAG, "LLM ready on CPU")
+            sharedLlm = llm
+        }
         cpuResult
     }
 
@@ -142,7 +163,7 @@ class TutorEngine(private val context: Context) {
                     mainHandler.post {
                         if (listener == null) return@post
                         if (done) {
-                            generating.set(false)
+                            sharedGenerating.set(false)
                             activeListener = null
                             listener.onDone()
                         } else {
@@ -170,7 +191,7 @@ class TutorEngine(private val context: Context) {
             listener.onError("Model taiyaar nahi hai.")
             return
         }
-        if (!generating.compareAndSet(false, true)) {
+        if (!sharedGenerating.compareAndSet(false, true)) {
             listener.onError("Pehla jawab poora hone do.")
             return
         }
@@ -179,10 +200,37 @@ class TutorEngine(private val context: Context) {
         try {
             engine.generateResponseAsync(buildPrompt(question, history))
         } catch (e: Exception) {
-            generating.set(false)
+            sharedGenerating.set(false)
             activeListener = null
             Log.e(TAG, "generateResponseAsync failed", e)
             listener.onError("Jawab banane me dikkat aayi.")
+        }
+    }
+
+    /**
+     * Topic pe quiz banao — NON-streaming single generation.
+     * Jawab me JSON aata hai (parse karna caller ka kaam).
+     * IO dispatcher pe chalao — generateResponse block karta hai.
+     */
+    suspend fun generateQuiz(topic: String): Result<String> = withContext(Dispatchers.IO) {
+        val engine = llm ?: return@withContext Result.failure(
+            IllegalStateException("model-not-ready")
+        )
+        if (!sharedGenerating.compareAndSet(false, true)) {
+            return@withContext Result.failure(IllegalStateException("busy"))
+        }
+        try {
+            val prompt = "Tum PadhAI ho. \"$topic\" par 5 multiple-choice " +
+                "questions banao, Hinglish me (Roman script Hindi + easy English). " +
+                "Sirf JSON me jawab do, koi extra text nahi:\n" +
+                "{\"questions\":[{\"q\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer\":0}]}\n" +
+                "\"answer\" sahi option ka index hai (0-3)."
+            Result.success(engine.generateResponse(prompt))
+        } catch (e: Exception) {
+            Log.e(TAG, "generateQuiz failed", e)
+            Result.failure(e)
+        } finally {
+            sharedGenerating.set(false)
         }
     }
 
@@ -224,13 +272,17 @@ class TutorEngine(private val context: Context) {
 
     fun close() {
         activeListener = null
-        generating.set(false)
+        sharedGenerating.set(false)
         closeQuietly()
     }
 
     private fun closeQuietly() {
         try {
-            llm?.close()
+            // Shared model ko close mat karo — dusri activity (Quiz) use kar
+            // rahi ho sakti hai. Process khatam hone pe OS memory saaf kar dega.
+            if (llm != null && llm !== sharedLlm) {
+                llm?.close()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "close failed", e)
         } finally {
