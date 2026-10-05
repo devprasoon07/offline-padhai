@@ -36,7 +36,7 @@ object OcrProcessor {
     }
 
     private val latinRecognizer: TextRecognizer by lazy {
-        TextRecognition.getClient(TextRecognizerOptions.DEFAULT)
+        TextRecognition.getClient(TextRecognizerOptions.Builder().build())
     }
 
     /** Photo file se text nikalo. */
