@@ -54,14 +54,29 @@ object OcrProcessor {
             } else {
                 recognizeWith(bitmap, latinRecognizer).trim()
             }
-            if (text.isEmpty()) {
-                OcrResult.Empty("Koi text nahi mila — roshni thik karke phir se photo lo.")
+            val cleaned = cleanText(text)
+            if (cleaned.isEmpty()) {
+                OcrResult.Empty("Koi saaf text nahi mila — roshni thik karke phir se photo lo.")
             } else {
-                OcrResult.Success(text)
+                OcrResult.Success(cleaned)
             }
         } catch (e: Exception) {
             OcrResult.Error("Text padhne me dikkat aayi.")
         }
+    }
+
+    /**
+     * OCR ki kachra lines hatao — single characters ya be-matlab tukde
+     * (jaise "I", "क", "o") model ko confuse karte hain aur jawab kharab hota hai.
+     * Aisi line rakho jisme kam se kam 3 letters/digits hon.
+     */
+    private fun cleanText(raw: String): String {
+        return raw.lines()
+            .map { it.trim() }
+            .filter { line -> line.count { it.isLetterOrDigit() } >= 3 }
+            .joinToString("\n")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
     }
 
     private suspend fun recognizeWith(bitmap: Bitmap, recognizer: TextRecognizer): String {
