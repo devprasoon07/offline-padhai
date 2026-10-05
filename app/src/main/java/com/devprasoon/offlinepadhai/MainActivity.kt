@@ -3,7 +3,9 @@ package com.devprasoon.offlinepadhai
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
@@ -26,6 +28,7 @@ import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +84,14 @@ class MainActivity : AppCompatActivity() {
     /** TTS */
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+
+    /** Crop cancel/error pe wapas OCR ke liye original photo yaad rakho. */
+    private var pendingCropSource: File? = null
+
+    /** Streaming smoothness: har token pe TextView update karne se UI atakti hai,
+        isliye ~120ms me ek baar update karo. latestFullAnswer me hamesha poora text. */
+    private var latestFullAnswer = ""
+    private var lastAnswerUiUpdate = 0L
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -198,9 +209,59 @@ class MainActivity : AppCompatActivity() {
                 if (file == null) {
                     showStatus(getString(R.string.err_photo))
                 } else {
-                    runOcr(file)
+                    openCrop(file)
                 }
             }
+        }
+    }
+
+    /**
+     * Photo lene ke baad crop screen kholo — sirf sawal wala hissa chuno
+     * taaki OCR saaf text pakde. Cancel karne pe kuch nahi hota.
+     */
+    private fun openCrop(photo: File) {
+        try {
+            pendingCropSource = photo
+            val destFile = File(cacheDir, "crop_${System.currentTimeMillis()}.jpg")
+            UCrop.of(Uri.fromFile(photo), Uri.fromFile(destFile))
+                .withMaxResultSize(2000, 2000)
+                .withOptions(UCrop.Options().apply {
+                    setCompressionQuality(92)
+                    setFreeStyleCropEnabled(true)
+                    setHideBottomControls(false)
+                })
+                .start(this)
+        } catch (e: Exception) {
+            Log.w("MainActivity", "crop open failed, OCR seedha", e)
+            pendingCropSource = null
+            runOcr(photo)
+        }
+    }
+
+    @Deprecated("UCrop classic API ke liye")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != UCrop.REQUEST_CROP) return
+        val source = pendingCropSource
+        pendingCropSource = null
+        when {
+            resultCode == RESULT_OK && data != null -> {
+                val outUri = UCrop.getOutput(data)
+                val path = outUri?.path
+                if (path != null) {
+                    runOcr(File(path))
+                } else if (source != null) {
+                    runOcr(source)
+                }
+            }
+            resultCode == UCrop.RESULT_ERROR && data != null -> {
+                val err = UCrop.getError(data)
+                Log.w("MainActivity", "crop failed", err)
+                // Crop fail ho to original photo pe OCR kar lo
+                if (source != null) runOcr(source)
+                else showStatus(getString(R.string.err_photo))
+            }
+            // RESULT_CANCELED: user ne wapas kar diya — kuch mat karo
         }
     }
 
@@ -283,7 +344,7 @@ class MainActivity : AppCompatActivity() {
 
         tutor.explain(question, emptyList(), object : TutorEngine.StreamListener {
             override fun onPartial(fullText: String) {
-                tvAnswer.text = fullText
+                updateAnswerThrottled(fullText)
                 if (rowThinking.visibility == View.VISIBLE) {
                     rowThinking.visibility = View.GONE
                     tvAnswer.startAnimation(
@@ -293,6 +354,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onDone() {
+                flushAnswer()
                 btnExplain.isEnabled = true
                 dividerFollow.visibility = View.VISIBLE
                 tvFollowLabel.visibility = View.VISIBLE
@@ -319,6 +381,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetAnswerUi() {
+        latestFullAnswer = ""
+        lastAnswerUiUpdate = 0L
         tvAnswer.text = ""
         tvAnswer.visibility = View.VISIBLE
         rowThinking.visibility = View.VISIBLE
@@ -330,6 +394,26 @@ class MainActivity : AppCompatActivity() {
         // Naya sawal = nayi history entry banegi
         currentHistoryId = null
         updateBookmarkIcon(false)
+    }
+
+    /**
+     * Streaming ke dauraan TextView ko ~120ms me ek baar update karo.
+     * Har token pe setText() karne se layout pass bar-bar chalta hai aur UI laggy lagti hai.
+     */
+    private fun updateAnswerThrottled(full: String) {
+        latestFullAnswer = full
+        val now = SystemClock.uptimeMillis()
+        if (now - lastAnswerUiUpdate >= 120) {
+            lastAnswerUiUpdate = now
+            tvAnswer.text = full
+        }
+    }
+
+    /** Throttle ki wajah se chhuta hua aakhri text onDone pe laga do. */
+    private fun flushAnswer() {
+        if (tvAnswer.text.toString() != latestFullAnswer) {
+            tvAnswer.text = latestFullAnswer
+        }
     }
 
     private fun sendFollowUp() {
@@ -345,13 +429,14 @@ class MainActivity : AppCompatActivity() {
 
         tutor.askFollowUp(question, conversation.toList(), object : TutorEngine.StreamListener {
             override fun onPartial(fullText: String) {
-                tvAnswer.text = baseText + fullText
+                updateAnswerThrottled(baseText + fullText)
                 if (rowThinking.visibility == View.VISIBLE) {
                     rowThinking.visibility = View.GONE
                 }
             }
 
             override fun onDone() {
+                flushAnswer()
                 btnSend.isEnabled = true
                 val newAnswer = tvAnswer.text.toString().removePrefix(baseText)
                 conversation.add(TutorEngine.ChatTurn(question, newAnswer))

@@ -52,4 +52,7 @@ dependencies {
     // Coroutines: lifecycleScope in Activity + Task.await() for ML Kit
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // uCrop: photo lene ke baad sawal wala hissa crop karo (OCR accuracy ke liye)
+    implementation("com.github.yalantis:ucrop:2.2.8")
 }

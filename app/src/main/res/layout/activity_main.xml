@@ -166,6 +166,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:background="@null"
+                            android:drawableStart="@android:drawable/ic_menu_search"
+                            android:drawablePadding="10dp"
                             android:hint="@string/question_hint"
                             android:inputType="textMultiLine"
                             android:lineSpacingExtra="4sp"
