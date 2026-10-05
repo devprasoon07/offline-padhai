@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PadhAI</string>
+    <string name="wordmark">PadhAI</string>
+
+    <string name="capture_desc">फोटो लो</string>
+    <string name="sheet_hint">फोटो लो — सवाल अपने आप पढ़ लिया जाएगा</string>
+
+    <string name="question_label">सवाल</string>
+    <string name="btn_explain">समझाओ</string>
+    <string name="explaining">समझा रहा हूँ…</string>
+
+    <string name="followup_label">कुछ और पूछो?</string>
+    <string name="followup_hint">यहाँ लिखो…</string>
+    <string name="btn_send">भेजो</string>
+    <string name="send_desc">भेजो</string>
+
+    <string name="airplane_hint">एयरप्लेन मोड में भी चलेगा — सब कुछ फोन पर है</string>
+
+    <string name="setup_title">मॉडल तैयार नहीं है</string>
+    <string name="setup_body">Gemma मॉडल अभी ऐप में नहीं है। README में दिए स्टेप्स से .bin फ़ाइल ऐप के फ़ोल्डर में रखो, फिर नीचे दबाओ।</string>
+    <string name="btn_recheck">फिर देखो</string>
+
+    <string name="status_model_loading">मॉडल लोड हो रहा है…</string>
+    <string name="status_model_ready">तैयार — फोटो लो</string>
+    <string name="status_ocr_reading">पढ़ रहा हूँ…</string>
+    <string name="status_ocr_done">मिल गया — अब समझाओ दबाओ</string>
+
+    <string name="err_photo">फोटो नहीं ली जा सकी</string>
+    <string name="err_camera">कैमरा खुल नहीं पाया</string>
+    <string name="err_permission">फोटो लेने के लिए कैमरे की परमिशन चाहिए</string>
+    <string name="err_model_load">मॉडल लोड नहीं हुआ</string>
+    <string name="err_not_ready">मॉडल अभी तैयार नहीं है</string>
+    <string name="err_empty_question">पहले सवाल का टेक्स्ट आने दो</string>
+    <string name="err_busy">पहला जवाब पूरा होने दो</string>
+
+    <string name="btn_history">हिस्ट्री</string>
+    <string name="btn_quiz">क्विज़</string>
+    <string name="question_hint">यहाँ सवाल लिखो… या फोटो लो</string>
+    <string name="mic_desc">बोलो</string>
+    <string name="bookmark_desc">बुकमार्क</string>
+    <string name="speak_desc">सुनो</string>
+    <string name="share_desc">शेयर</string>
+
+    <string name="history_title">हिस्ट्री</string>
+    <string name="bookmarks_only">सिर्फ बुकमार्क</string>
+    <string name="history_empty">अभी कोई हिस्ट्री नहीं — पहला सवाल पूछो!</string>
+    <string name="delete_title">डिलीट करें?</string>
+    <string name="delete_msg">यह सवाल हिस्ट्री से हट जाएगा।</string>
+    <string name="delete_yes">डिलीट</string>
+    <string name="delete_no">रहने दो</string>
+
+    <string name="quiz_title">क्विज़ मोड</string>
+    <string name="quiz_topic_hint">टॉपिक लिखो… (जैसे: Photosynthesis)</string>
+    <string name="quiz_make">क्विज़ बनाओ</string>
+    <string name="quiz_making">क्विज़ बन रहा है…</string>
+    <string name="quiz_error">क्विज़ बनाने में दिक्कत, फिर try करो</string>
+    <string name="quiz_next">अगला</string>
+    <string name="quiz_finish">खत्म</string>
+    <string name="quiz_again">फिर से</string>
+    <string name="quiz_close">बंद करो</string>
+    <string name="quiz_pick_option">पहले एक ऑप्शन चुनो</string>
+    <string name="quiz_qnum">सवाल %1$d / %2$d</string>
+    <string name="quiz_done_title">क्विज़ खत्म!</string>
+    <string name="quiz_score_msg">%1$d में से %2$d सही! 🎉</string>
+    <string name="err_empty_topic">पहले टॉपिक लिखो</string>
+
+    <!-- भाषा / क्रॉप -->
+    <string name="lang_label">जवाब की भाषा:</string>
+    <string name="crop_hint">उंगली से सवाल वाला हिस्सा सेलेक्ट करो</string>
+    <string name="crop_done">क्रॉप करो</string>
+    <string name="crop_cancel">रद्द करो</string>
+    <string name="crop_need_selection">पहले उंगली से हिस्सा सेलेक्ट करो</string>
+    <string name="crop_too_small">सेलेक्शन बहुत छोटा है</string>
+    <string name="err_voice">वॉइस इनपुट शुरू नहीं हो पाया</string>
+    <string name="err_tts">TTS तैयार नहीं है</string>
+    <string name="err_no_answer">पहले कोई जवाब जनरेट करो</string>
+</resources>

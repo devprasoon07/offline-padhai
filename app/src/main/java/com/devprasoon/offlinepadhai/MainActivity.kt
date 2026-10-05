@@ -24,8 +24,10 @@ import android.widget.ArrayAdapter
 import android.widget.AdapterView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -528,7 +530,7 @@ class MainActivity : AppCompatActivity() {
             voiceLauncher.launch(intent)
         } catch (e: Exception) {
             Log.w("MainActivity", "Voice input failed", e)
-            Toast.makeText(this, "Voice input shuru nahi ho paya", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.err_voice), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -569,7 +571,7 @@ class MainActivity : AppCompatActivity() {
     private fun toggleSpeak() {
         val engine = tts
         if (!ttsReady || engine == null) {
-            Toast.makeText(this, "TTS taiyaar nahi hai", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.err_tts), Toast.LENGTH_SHORT).show()
             return
         }
         try {
@@ -598,7 +600,7 @@ class MainActivity : AppCompatActivity() {
         val q = etQuestion.text.toString().trim()
         val a = tvAnswer.text.toString().trim()
         if (q.isEmpty() || a.isEmpty()) {
-            Toast.makeText(this, "Pehle koi jawab generate karo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.err_no_answer), Toast.LENGTH_SHORT).show()
             return
         }
         val text = "Sawal: $q\n\nJawab: $a\n\n— Offline PadhAI (100% offline AI tutor)"
@@ -651,6 +653,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Bhasha dropdown: user jis bhasha me chahe jawab paye. Choice save rehti hai. */
+    private var spinnerInitDone = false
+
     private fun setupLanguageSpinner() {
         val names = Languages.ALL.map { it.displayName }
         val adapter = ArrayAdapter(
@@ -668,10 +672,37 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(
                 parent: AdapterView<*>?, view: View?, position: Int, id: Long
             ) {
-                AppPrefs.setLanguage(this@MainActivity, Languages.ALL[position].code)
+                val code = Languages.ALL[position].code
+                AppPrefs.setLanguage(this@MainActivity, code)
+                // Init ke dauraan nahi — sirf user ke badalne pe UI bhasha lagao.
+                if (spinnerInitDone) applyUiLocale(code)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        spinnerInitDone = true
+        // App khulne pe saved bhasha ka UI locale lagao.
+        applyUiLocale(current.code)
+    }
+
+    /**
+     * UI ke buttons/labels bhi chuni hui bhasha me.
+     * Hindi -> hi, English -> en, baaki (Hinglish default) -> default resources.
+     */
+    private fun applyUiLocale(code: String) {
+        val tags = when (code) {
+            "hindi" -> "hi"
+            "english" -> "en"
+            else -> ""
+        }
+        val newLocales = if (tags.isEmpty()) {
+            LocaleListCompat.getEmptyList()
+        } else {
+            LocaleListCompat.forLanguageTags(tags)
+        }
+        val current = AppCompatDelegate.getApplicationLocales()
+        if (current.toLanguageTags() != newLocales.toLanguageTags()) {
+            AppCompatDelegate.setApplicationLocales(newLocales)
         }
     }
 

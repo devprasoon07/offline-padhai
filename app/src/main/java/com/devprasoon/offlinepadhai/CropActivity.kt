@@ -67,7 +67,7 @@ class CropActivity : AppCompatActivity() {
         }
         val viewRect = overlay.selection
         if (viewRect == null || viewRect.width() < 40f || viewRect.height() < 40f) {
-            Toast.makeText(this, "Pehle ungli se hissa select karo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.crop_need_selection), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -81,7 +81,7 @@ class CropActivity : AppCompatActivity() {
         val right = pts[2].toInt().coerceIn(0, bmp.width)
         val bottom = pts[3].toInt().coerceIn(0, bmp.height)
         if (right - left < 20 || bottom - top < 20) {
-            Toast.makeText(this, "Selection bahut chhota hai", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.crop_too_small), Toast.LENGTH_SHORT).show()
             return
         }
 

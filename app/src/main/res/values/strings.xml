@@ -64,4 +64,15 @@
     <string name="quiz_done_title">Quiz khatam!</string>
     <string name="quiz_score_msg">%1$d me se %2$d sahi! 🎉</string>
     <string name="err_empty_topic">Pehle topic likho</string>
+
+    <!-- Bhasha / crop -->
+    <string name="lang_label">Jawab ki bhasha:</string>
+    <string name="crop_hint">Ungli se sawal wala hissa select karo</string>
+    <string name="crop_done">Crop karo</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_need_selection">Pehle ungli se hissa select karo</string>
+    <string name="crop_too_small">Selection bahut chhota hai</string>
+    <string name="err_voice">Voice input shuru nahi ho paya</string>
+    <string name="err_tts">TTS taiyaar nahi hai</string>
+    <string name="err_no_answer">Pehle koi jawab generate karo</string>
 </resources>

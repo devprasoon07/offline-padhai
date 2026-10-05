@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PadhAI</string>
+    <string name="wordmark">PadhAI</string>
+
+    <string name="capture_desc">Take photo</string>
+    <string name="sheet_hint">Take a photo — the question will be read automatically</string>
+
+    <string name="question_label">Question</string>
+    <string name="btn_explain">Explain</string>
+    <string name="explaining">Explaining…</string>
+
+    <string name="followup_label">Ask something else?</string>
+    <string name="followup_hint">Type here…</string>
+    <string name="btn_send">Send</string>
+    <string name="send_desc">Send</string>
+
+    <string name="airplane_hint">Works in airplane mode too — everything is on your phone</string>
+
+    <string name="setup_title">Model not ready</string>
+    <string name="setup_body">The Gemma model isn\'t in the app yet. Place the .bin file in the app\'s folder (see README), then tap below.</string>
+    <string name="btn_recheck">Check again</string>
+
+    <string name="status_model_loading">Loading model…</string>
+    <string name="status_model_ready">Ready — take a photo</string>
+    <string name="status_ocr_reading">Reading…</string>
+    <string name="status_ocr_done">Got it — now tap Explain</string>
+
+    <string name="err_photo">Couldn\'t take photo</string>
+    <string name="err_camera">Couldn\'t open camera</string>
+    <string name="err_permission">Camera permission is needed to take photos</string>
+    <string name="err_model_load">Model failed to load</string>
+    <string name="err_not_ready">Model isn\'t ready yet</string>
+    <string name="err_empty_question">Wait for the question text first</string>
+    <string name="err_busy">Let the first answer finish</string>
+
+    <string name="btn_history">History</string>
+    <string name="btn_quiz">Quiz</string>
+    <string name="question_hint">Type your question… or take a photo</string>
+    <string name="mic_desc">Speak</string>
+    <string name="bookmark_desc">Bookmark</string>
+    <string name="speak_desc">Listen</string>
+    <string name="share_desc">Share</string>
+
+    <string name="history_title">History</string>
+    <string name="bookmarks_only">Bookmarks only</string>
+    <string name="history_empty">No history yet — ask your first question!</string>
+    <string name="delete_title">Delete?</string>
+    <string name="delete_msg">This question will be removed from history.</string>
+    <string name="delete_yes">Delete</string>
+    <string name="delete_no">Keep</string>
+
+    <string name="quiz_title">Quiz Mode</string>
+    <string name="quiz_topic_hint">Type a topic… (e.g.: Photosynthesis)</string>
+    <string name="quiz_make">Make quiz</string>
+    <string name="quiz_making">Making quiz…</string>
+    <string name="quiz_error">Couldn\'t make quiz, try again</string>
+    <string name="quiz_next">Next</string>
+    <string name="quiz_finish">Finish</string>
+    <string name="quiz_again">Again</string>
+    <string name="quiz_close">Close</string>
+    <string name="quiz_pick_option">Pick an option first</string>
+    <string name="quiz_qnum">Question %1$d / %2$d</string>
+    <string name="quiz_done_title">Quiz done!</string>
+    <string name="quiz_score_msg">%1$d out of %2$d correct! 🎉</string>
+    <string name="err_empty_topic">Type a topic first</string>
+
+    <!-- Language / crop -->
+    <string name="lang_label">Answer language:</string>
+    <string name="crop_hint">Select the question area with your finger</string>
+    <string name="crop_done">Crop</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_need_selection">First select an area with your finger</string>
+    <string name="crop_too_small">Selection is too small</string>
+    <string name="err_voice">Couldn\'t start voice input</string>
+    <string name="err_tts">TTS isn\'t ready</string>
+    <string name="err_no_answer">Generate an answer first</string>
+</resources>
