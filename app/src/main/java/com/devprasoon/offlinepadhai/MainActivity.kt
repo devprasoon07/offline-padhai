@@ -5,8 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.View
@@ -63,7 +61,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var inputContent: LinearLayout
     private lateinit var resultContent: LinearLayout
     private lateinit var etQuestion: EditText
-    private lateinit var btnMic: ImageButton
     private lateinit var btnExplain: Button
     private lateinit var spinnerLanguage: Spinner
     private lateinit var rowThinking: LinearLayout
@@ -122,18 +119,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    /** Voice input ka nateeja — etQuestion me daalo. */
-    private val voiceLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                val spoken = matches?.firstOrNull()?.trim()
-                if (!spoken.isNullOrEmpty()) {
-                    etQuestion.setText(spoken)
-                    revealResultContent()
-                }
-            }
-        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -183,7 +168,6 @@ class MainActivity : AppCompatActivity() {
         btnExplain.setOnClickListener { explainQuestion() }
         btnSend.setOnClickListener { sendFollowUp() }
         btnRecheck.setOnClickListener { checkModelAndInit() }
-        btnMic.setOnClickListener { startVoiceInput() }
         btnBookmark.setOnClickListener { toggleBookmark() }
         btnSpeak.setOnClickListener { toggleSpeak() }
         btnShare.setOnClickListener { shareAnswer() }
@@ -513,34 +497,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ---------- Voice input ----------
-
-    private fun startVoiceInput() {
-        try {
-            if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-                Toast.makeText(
-                    this,
-                    "Voice input is device me available nahi",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return
-            }
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(
-                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                )
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Sawal bolo...")
-            }
-            voiceLauncher.launch(intent)
-        } catch (e: Exception) {
-            Log.w("MainActivity", "Voice input failed", e)
-            Toast.makeText(this, getString(R.string.err_voice), Toast.LENGTH_SHORT).show()
-        }
-    }
-
     // ---------- TTS ----------
 
     private fun initTts() {
@@ -641,7 +597,6 @@ class MainActivity : AppCompatActivity() {
         inputContent = findViewById(R.id.inputContent)
         resultContent = findViewById(R.id.resultContent)
         etQuestion = findViewById(R.id.etQuestion)
-        btnMic = findViewById(R.id.btnMic)
         btnExplain = findViewById(R.id.btnExplain)
         spinnerLanguage = findViewById(R.id.spinnerLanguage)
         setupLanguageSpinner()

@@ -176,16 +176,6 @@
                             android:textColorHint="@color/text_faint"
                             android:textSize="16sp" />
                     </com.google.android.material.card.MaterialCardView>
-
-                    <ImageButton
-                        android:id="@+id/btnMic"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/pill_background"
-                        android:contentDescription="@string/mic_desc"
-                        android:padding="12dp"
-                        android:src="@android:drawable/ic_btn_speak_now" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
