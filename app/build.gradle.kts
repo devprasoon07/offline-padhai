@@ -14,8 +14,31 @@ android {
         versionCode = 1
         versionName = "1.0-8d37253"
     }
+
+    // Release signing: keystore.properties (git me COMMIT MAT KARNA)
+    // File format:
+    //   storeFile=/path/to/offline-padhai.keystore
+    //   storePassword=...
+    //   keyAlias=offline-padhai
+    //   keyPassword=...
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val keystoreProps = java.util.Properties()
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.inputStream().use { keystoreProps.load(it) }
+    }
+    signingConfigs {
+        create("release") {
+            if (keystorePropsFile.exists()) {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

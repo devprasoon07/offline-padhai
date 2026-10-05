@@ -10,3 +10,8 @@ app/build/
 # On-device LLM model files — kabhi commit mat karo (~1.5GB, side-load hote hain)
 *.bin
 *.task
+
+# Release keystore — KABHI git me mat daalo (passwords hain!)
+keystore.properties
+*.keystore
+*.jks
