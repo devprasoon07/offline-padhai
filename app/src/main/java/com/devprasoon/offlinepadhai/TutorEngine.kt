@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * On-device AI tutor: MediaPipe LLM Inference API + Gemma 2B-IT.
  *
  * - Model file app-specific external storage me side-load hoti hai
- *   (kabhi repo me commit mat karo — .gitignore me *.bin/*.task hai).
+ *   (kabhi repo me commit mat karo — .gitignore me `*.bin` aur `*.task` hai).
  * - Pehle GPU backend try hota hai, na chale to CPU fallback.
  * - Streaming: LlmInferenceOptions.setResultListener { partialResult, done -> }
  *   ke saath generateResponseAsync(prompt). Callbacks main thread pe milte hain.
