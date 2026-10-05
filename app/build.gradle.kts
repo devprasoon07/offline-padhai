@@ -38,9 +38,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // ML Kit on-device text recognition (Latin + Devanagari)
-    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
-    implementation("com.google.android.gms:play-services-mlkit-text-recognition-devanagari:16.0.1")
+    // ML Kit on-device text recognition (Latin + Devanagari) — standalone artifacts
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.0")
 
     // MediaPipe LLM Inference API (on-device Gemma)
     implementation("com.google.mediapipe:tasks-genai:0.10.14")
