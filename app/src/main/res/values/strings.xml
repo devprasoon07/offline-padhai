@@ -37,7 +37,7 @@
     <!-- Naye features -->
     <string name="btn_history">History</string>
     <string name="btn_quiz">Quiz</string>
-    <string name="mic_desc">Bolo</string>
+    <string name="question_hint">Yahan sawal likho… ya photo lo</string>    <string name="mic_desc">Bolo</string>
     <string name="bookmark_desc">Bookmark</string>
     <string name="speak_desc">Suno</string>
     <string name="share_desc">Share</string>

@@ -166,6 +166,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:background="@null"
+                            android:hint="@string/question_hint"
                             android:inputType="textMultiLine"
                             android:lineSpacingExtra="4sp"
                             android:minLines="2"
