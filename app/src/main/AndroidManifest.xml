@@ -22,6 +22,9 @@
         <activity
             android:name=".QuizActivity"
             android:exported="false" />
+        <activity
+            android:name=".CropActivity"
+            android:exported="false" />
 
         <!-- MediaPipe LLM engine ko OpenCL chahiye. Android 12+ pe ye system
              libraries manifest me declare kiye bina load nahi hoti (dlopen fail:

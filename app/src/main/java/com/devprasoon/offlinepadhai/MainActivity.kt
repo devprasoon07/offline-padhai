@@ -3,7 +3,6 @@ package com.devprasoon.offlinepadhai
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.speech.RecognizerIntent
@@ -28,7 +27,6 @@ import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
-import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -216,54 +214,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Photo lene ke baad crop screen kholo — sirf sawal wala hissa chuno
-     * taaki OCR saaf text pakde. Cancel karne pe kuch nahi hota.
+     * Photo lene ke baad apna crop screen kholo — ungli se sirf sawal wala
+     * hissa chuno taaki OCR saaf text pakde. Cancel pe poori photo pe OCR.
      */
     private fun openCrop(photo: File) {
-        try {
-            pendingCropSource = photo
-            val destFile = File(cacheDir, "crop_${System.currentTimeMillis()}.jpg")
-            UCrop.of(Uri.fromFile(photo), Uri.fromFile(destFile))
-                .withMaxResultSize(2000, 2000)
-                .withOptions(UCrop.Options().apply {
-                    setCompressionQuality(92)
-                    setFreeStyleCropEnabled(true)
-                    setHideBottomControls(false)
-                })
-                .start(this)
-        } catch (t: Throwable) {
-            // Kabhi chup-chaap fallback nahi — user ko dikhega ki crop khula nahi.
-            Log.w("MainActivity", "crop open failed, OCR seedha", t)
-            showStatus("Crop nahi khul paya — seedha poori photo padh raha hu.")
-            pendingCropSource = null
-            runOcr(photo)
-        }
+        pendingCropSource = photo
+        val intent = Intent(this, CropActivity::class.java)
+            .putExtra(CropActivity.EXTRA_PHOTO_PATH, photo.absolutePath)
+        cropLauncher.launch(intent)
     }
 
-    @Deprecated("UCrop classic API ke liye")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != UCrop.REQUEST_CROP) return
+    /** CropActivity ka result: cropped hissa mila to uspe OCR, cancel pe original. */
+    private val cropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
         val source = pendingCropSource
         pendingCropSource = null
-        when {
-            resultCode == RESULT_OK && data != null -> {
-                val outUri = UCrop.getOutput(data)
-                val path = outUri?.path
-                if (path != null) {
-                    runOcr(File(path))
-                } else if (source != null) {
-                    runOcr(source)
-                }
+        if (result.resultCode == RESULT_OK) {
+            val path = result.data?.getStringExtra(CropActivity.EXTRA_CROP_PATH)
+            val cropFile = path?.let { File(it) }
+            if (cropFile != null && cropFile.exists()) {
+                runOcr(cropFile)
+            } else if (source != null) {
+                runOcr(source)
+            } else {
+                showStatus(getString(R.string.err_photo))
             }
-            resultCode == UCrop.RESULT_ERROR && data != null -> {
-                val err = UCrop.getError(data)
-                Log.w("MainActivity", "crop failed", err)
-                // Crop fail ho to original photo pe OCR kar lo
-                if (source != null) runOcr(source)
-                else showStatus(getString(R.string.err_photo))
-            }
-            // RESULT_CANCELED: user ne wapas kar diya — kuch mat karo
+        } else {
+            // Cancel: poori original photo pe OCR kar lo.
+            if (source != null) runOcr(source)
         }
     }
 
