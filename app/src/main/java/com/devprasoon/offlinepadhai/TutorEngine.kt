@@ -108,19 +108,22 @@ class TutorEngine(private val context: Context) {
         if (!verifyModelIntegrity(file)) {
             return@withContext Result.failure(IllegalStateException("model-tampered"))
         }
-        val gpuResult = tryInit(file, LlmInference.Backend.GPU)
-        if (gpuResult.isSuccess) {
-            Log.i(TAG, "LLM ready on GPU")
-            sharedLlm = llm
-            return@withContext gpuResult
-        }
-        Log.w(TAG, "GPU backend failed, trying CPU", gpuResult.exceptionOrNull())
+        // NOTE: Mali GPUs (jaise Dimensity 7200 ka Mali-G610) pe GPU inference
+        // generation ke dauraan hard-freeze kar sakta hai (known MediaPipe issue).
+        // Isliye CPU PEHLE try karo — thoda slow par reliable. GPU sirf fallback.
         val cpuResult = tryInit(file, LlmInference.Backend.CPU)
         if (cpuResult.isSuccess) {
             Log.i(TAG, "LLM ready on CPU")
             sharedLlm = llm
+            return@withContext cpuResult
         }
-        cpuResult
+        Log.w(TAG, "CPU backend failed, trying GPU", cpuResult.exceptionOrNull())
+        val gpuResult = tryInit(file, LlmInference.Backend.GPU)
+        if (gpuResult.isSuccess) {
+            Log.i(TAG, "LLM ready on GPU")
+            sharedLlm = llm
+        }
+        gpuResult
     }
 
     /**
