@@ -43,7 +43,7 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-devanagari:16.0.0")
 
     // MediaPipe LLM Inference API (on-device Gemma)
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+    implementation("com.google.mediapipe:tasks-genai:0.10.21")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

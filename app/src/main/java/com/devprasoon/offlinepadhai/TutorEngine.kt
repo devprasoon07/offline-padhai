@@ -51,7 +51,7 @@ class TutorEngine(private val context: Context) {
          */
         private const val EXPECTED_MODEL_SHA256 = ""
 
-        private const val SYSTEM_PROMPT = """
+        private val SYSTEM_PROMPT = """
             Tum PadhAI ho — Bharat ke students ke liye ek shaant aur sabr wala tutor.
             Hamesha Hinglish me jawab do (Roman script me likhi Hindi + aasaan English).
             Niyam:
