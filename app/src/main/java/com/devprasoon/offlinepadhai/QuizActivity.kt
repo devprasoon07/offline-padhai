@@ -10,7 +10,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 /**
@@ -45,6 +47,7 @@ class QuizActivity : AppCompatActivity() {
     private var currentIndex = 0
     private var selectedOption = -1
     private var score = 0
+    private var currentTopic = ""
     private val userAnswers = mutableListOf<Int>()
 
     private lateinit var resultScreen: LinearLayout
@@ -84,6 +87,7 @@ class QuizActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.err_empty_topic), Toast.LENGTH_SHORT).show()
             return
         }
+        currentTopic = topic
         btnMakeQuiz.isEnabled = false
         progressQuiz.visibility = View.VISIBLE
         showStatus(getString(R.string.quiz_making))
@@ -170,6 +174,16 @@ class QuizActivity : AppCompatActivity() {
         resultScreen.visibility = View.VISIBLE
 
         tvFinalScore.text = getString(R.string.quiz_score_msg, questions.size, score)
+
+        // Score Room me save karo (background me, UI block nahi).
+        val topic = currentTopic
+        if (topic.isNotEmpty() && questions.isNotEmpty()) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    QuizScoreManager(this@QuizActivity).saveScore(topic, score, questions.size)
+                }
+            }
+        }
 
         resultContainer.removeAllViews()
         questions.forEachIndexed { idx, q ->
