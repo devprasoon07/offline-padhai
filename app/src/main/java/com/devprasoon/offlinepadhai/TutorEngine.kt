@@ -15,10 +15,10 @@ import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * On-device AI tutor: MediaPipe LLM Inference API + Gemma 2B-IT.
+ * On-device AI tutor: MediaPipe LLM Inference API + selectable models (ModelCatalog).
  *
- * - Model file app-specific external storage me side-load hoti hai
- *   (kabhi repo me commit mat karo — .gitignore me `*.bin` aur `*.task` hai).
+ * - Model file app-specific external storage me aati hai — download se ya
+ *   side-load se (kabhi repo me commit mat karo — .gitignore me `*.bin`/`*.task` hai).
  * - Pehle GPU backend try hota hai, na chale to CPU fallback.
  * - Streaming: LlmInferenceOptions.setResultListener { partialResult, done -> }
  *   ke saath generateResponseAsync(prompt). Callbacks main thread pe milte hain.
@@ -41,6 +41,7 @@ class TutorEngine(private val context: Context) {
     }
 
     companion object {
+        /** Purana hardcoded naam — ab ModelCatalog se aata hai (picker). */
         const val MODEL_FILE_NAME = "gemma-2b-it-gpu-int4.bin"
         private const val TAG = "TutorEngine"
         private const val MAX_TOKENS = 1024
@@ -55,14 +56,6 @@ class TutorEngine(private val context: Context) {
 
         /** Ek waqt me ek hi generation — shared model ke liye shared guard. */
         private val sharedGenerating = AtomicBoolean(false)
-
-        /**
-         * Model file ka expected SHA-256 (hex, lowercase).
-         * Khali hai to check skip hota hai (dev builds ke liye theek).
-         * Release se pehle set karo: `sha256sum gemma-2b-it-gpu-int4.bin`
-         * aur yahan paste karo — tampered model load nahi hogi.
-         */
-        private const val EXPECTED_MODEL_SHA256 = ""
 
         /** Chuni hui bhasha me jawab dene wala system prompt. */
         private fun systemPrompt(language: AppLanguage): String {
@@ -94,7 +87,24 @@ class TutorEngine(private val context: Context) {
     private var activeListener: StreamListener? = null
     private val accum = StringBuilder()
 
-    fun modelFile(): File = File(context.getExternalFilesDir(null), MODEL_FILE_NAME)
+    fun modelFile(): File =
+        File(context.getExternalFilesDir(null), AppPrefs.getModel(context).fileName)
+
+    fun selectedModel(): AIModel = AppPrefs.getModel(context)
+
+    /**
+     * User ne model picker me dusra model chuna — shared instance drop karo
+     * taaki agli init() nayi file se load kare. Purana model RAM se nikal jata hai.
+     * (Normal close() shared ko chhoota nahi — ye sirf model SWITCH ke liye hai.)
+     */
+    fun notifyModelChanged() {
+        try { sharedLlm?.close() } catch (_: Exception) {}
+        sharedLlm = null
+        llm = null
+        activeListener = null
+        sharedGenerating.set(false)
+        Log.i(TAG, "Model switched — shared instance dropped")
+    }
 
     fun isModelPresent(): Boolean = modelFile().exists()
 
@@ -141,12 +151,13 @@ class TutorEngine(private val context: Context) {
 
     /**
      * Model file ki SHA-256 integrity verify karo.
-     * EXPECTED_MODEL_SHA256 khali hai to check skip (dev builds),
+     * Catalog me sha256 khali hai to check skip (dev builds),
      * warna mismatch pe model load karne se inkaar.
      */
     private fun verifyModelIntegrity(file: File): Boolean {
-        if (EXPECTED_MODEL_SHA256.isBlank()) {
-            Log.w(TAG, "EXPECTED_MODEL_SHA256 not set — integrity check skipped")
+        val expected = AppPrefs.getModel(context).sha256
+        if (expected.isBlank()) {
+            Log.w(TAG, "Model SHA-256 not set — integrity check skipped")
             return true
         }
         return try {
@@ -159,7 +170,7 @@ class TutorEngine(private val context: Context) {
                 }
             }
             val actual = digest.digest().joinToString("") { "%02x".format(it) }
-            val ok = actual.equals(EXPECTED_MODEL_SHA256.trim(), ignoreCase = true)
+            val ok = actual.equals(expected.trim(), ignoreCase = true)
             if (!ok) Log.e(TAG, "Model SHA-256 mismatch — refusing to load")
             ok
         } catch (e: Exception) {
@@ -368,12 +379,18 @@ class TutorEngine(private val context: Context) {
     }
 
     /**
-     * Gemma IT models ko chat template chahiye hota hai — bina
-     * <start_of_turn>/<end_of_turn> tokens ke model instructions ko
-     * follow karne ke bajaye repeat karne lagta hai.
+     * Model family ke hisaab se chat template lagao.
+     * - GEMMA (Gemma 2B-IT / 3 1B): <start_of_turn> tokens — bina inke model
+     *   instructions follow karne ke bajaye repeat karne lagta hai.
+     * - CHATML (Qwen 2.5): <|im_start|>/<|im_end|> format.
      */
     private fun wrapChatTemplate(userText: String): String {
-        return "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
+        return when (AppPrefs.getModel(context).chatTemplate) {
+            ChatTemplate.CHATML ->
+                "<|im_start|>user\n$userText<|im_end|>\n<|im_start|>assistant\n"
+            ChatTemplate.GEMMA ->
+                "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
+        }
     }
 
     private fun buildPrompt(question: String, history: List<ChatTurn>, language: AppLanguage): String {

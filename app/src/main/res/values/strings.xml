@@ -19,6 +19,12 @@
 
     <string name="setup_title">Model taiyaar nahi hai</string>
     <string name="setup_body">Gemma model abhi app me nahi hai. README me diye steps se .bin file app ke folder me rakho, phir neeche dabao.</string>
+    <string name="btn_download_model">Download model</string>
+    <string name="setup_body_new">No AI model yet. Pick one below and download it (one-time, needs internet). After that everything works fully offline.</string>
+    <string name="dl_starting">Download shuru ho raha hai…</string>
+    <string name="dl_no_link">Is model ka download link abhi set nahi hai.</string>
+    <string name="dl_complete">Download poora hua — model load ho raha hai…</string>
+    <string name="dl_cancelled">Download cancel kiya gaya.</string>
     <string name="btn_recheck">Phir dekho</string>
 
     <string name="status_model_loading">Model load ho raha hai…</string>

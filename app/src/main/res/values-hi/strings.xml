@@ -19,6 +19,12 @@
 
     <string name="setup_title">मॉडल तैयार नहीं है</string>
     <string name="setup_body">Gemma मॉडल अभी ऐप में नहीं है। README में दिए स्टेप्स से .bin फ़ाइल ऐप के फ़ोल्डर में रखो, फिर नीचे दबाओ।</string>
+    <string name="btn_download_model">मॉडल डाउनलोड करो</string>
+    <string name="setup_body_new">अभी कोई AI मॉडल नहीं है। नीचे से एक चुनो और डाउनलोड करो (एक बार, इंटरनेट चाहिए)। उसके बाद सब कुछ पूरी तरह ऑफ़लाइन चलेगा।</string>
+    <string name="dl_starting">डाउनलोड शुरू हो रहा है…</string>
+    <string name="dl_no_link">इस मॉडल का डाउनलोड लिंक अभी सेट नहीं है।</string>
+    <string name="dl_complete">डाउनलोड पूरा हुआ — मॉडल लोड हो रहा है…</string>
+    <string name="dl_cancelled">डाउनलोड कैंसल किया गया।</string>
     <string name="btn_recheck">फिर देखो</string>
 
     <string name="status_model_loading">मॉडल लोड हो रहा है…</string>

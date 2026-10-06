@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.camera.any" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Sirf model download ke liye (one-time). Inference 100% offline hai. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="Offline PadhAI"
         android:theme="@style/Theme.OfflinePadhAI"

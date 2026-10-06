@@ -15,6 +15,8 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.Spinner
@@ -76,6 +78,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSend: Button
     private lateinit var cardSetup: LinearLayout
     private lateinit var btnRecheck: Button
+    private lateinit var tvSetupBody: TextView
+    private lateinit var rgModels: RadioGroup
+    private lateinit var rbModelLite: RadioButton
+    private lateinit var rbModelStandard: RadioButton
+    private lateinit var rbModelPro: RadioButton
+    private lateinit var btnDownloadModel: Button
+    private lateinit var pbDownload: ProgressBar
+    private lateinit var tvDownloadStatus: TextView
+    private var modelDownloader: ModelDownloader? = null
+    private var pickerInitDone = false
 
     /** Follow-up context ke liye baatcheet yaad rakho. */
     private val conversation = mutableListOf<TutorEngine.ChatTurn>()
@@ -168,6 +180,10 @@ class MainActivity : AppCompatActivity() {
         btnExplain.setOnClickListener { explainQuestion() }
         btnSend.setOnClickListener { sendFollowUp() }
         btnRecheck.setOnClickListener { checkModelAndInit() }
+        setupModelPicker()
+        // App restart ke baad adhura download ho to usse jud jao.
+        modelDownloader = ModelDownloader(this)
+        modelDownloader?.attachIfActive(downloadListener())
         btnBookmark.setOnClickListener { toggleBookmark() }
         btnSpeak.setOnClickListener { toggleSpeak() }
         btnShare.setOnClickListener { shareAnswer() }
@@ -276,6 +292,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkModelAndInit() {
         if (!tutor.isModelPresent()) {
+            refreshModelPicker()
             cardSetup.visibility = View.VISIBLE
             inputContent.visibility = View.GONE
             resultContent.visibility = View.GONE
@@ -293,6 +310,91 @@ class MainActivity : AppCompatActivity() {
                 showStatus(getString(R.string.err_model_load))
             }
         }
+    }
+
+    /** Model picker: 3 tiers — Lite / Standard / Pro. Choice save rehti hai. */
+    private fun setupModelPicker() {
+        val lite = ModelCatalog.MODELS[0]
+        val std = ModelCatalog.MODELS[1]
+        val pro = ModelCatalog.MODELS[2]
+        rbModelLite.text = "${lite.displayName} — ${lite.modelName} (${lite.sizeLabel})\n${lite.blurb}"
+        rbModelStandard.text = "${std.displayName} — ${std.modelName} (${std.sizeLabel})\n${std.blurb}"
+        rbModelPro.text = "${pro.displayName} — ${pro.modelName} (${pro.sizeLabel})\n${pro.blurb}"
+        refreshModelPicker()
+        rgModels.setOnCheckedChangeListener { _, checkedId ->
+            if (!pickerInitDone) return@setOnCheckedChangeListener
+            val newId = when (checkedId) {
+                R.id.rbModelLite -> "lite"
+                R.id.rbModelPro -> "pro"
+                else -> "standard"
+            }
+            if (AppPrefs.getModelId(this) != newId) {
+                AppPrefs.setModelId(this, newId)
+                tutor.notifyModelChanged()
+                pbDownload.visibility = View.GONE
+                tvDownloadStatus.visibility = View.GONE
+            }
+        }
+        pickerInitDone = true
+        btnDownloadModel.setOnClickListener { startModelDownload() }
+    }
+
+    private fun refreshModelPicker() {
+        when (AppPrefs.getModelId(this)) {
+            "lite" -> rgModels.check(R.id.rbModelLite)
+            "pro" -> rgModels.check(R.id.rbModelPro)
+            else -> rgModels.check(R.id.rbModelStandard)
+        }
+        tvSetupBody.text = getString(R.string.setup_body_new)
+    }
+
+    private fun downloadListener() = object : ModelDownloader.Listener {
+        override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+            runOnUiThread {
+                pbDownload.visibility = View.VISIBLE
+                tvDownloadStatus.visibility = View.VISIBLE
+                if (totalBytes > 0) {
+                    val pct = (downloadedBytes * 100 / totalBytes).toInt()
+                    pbDownload.progress = pct
+                    val mb = downloadedBytes / 1_000_000
+                    val tot = totalBytes / 1_000_000
+                    tvDownloadStatus.text = "Download ho raha hai… $pct% ($mb/$tot MB)"
+                } else {
+                    tvDownloadStatus.text = "Download ho raha hai…"
+                }
+            }
+        }
+
+        override fun onComplete(file: File) {
+            runOnUiThread {
+                tvDownloadStatus.text = getString(R.string.dl_complete)
+                pbDownload.visibility = View.GONE
+                checkModelAndInit()
+            }
+        }
+
+        override fun onError(message: String) {
+            runOnUiThread {
+                pbDownload.visibility = View.GONE
+                tvDownloadStatus.visibility = View.VISIBLE
+                tvDownloadStatus.text = message
+            }
+        }
+    }
+
+    private fun startModelDownload() {
+        val model = AppPrefs.getModel(this)
+        if (model.downloadUrl.isBlank()) {
+            tvDownloadStatus.visibility = View.VISIBLE
+            tvDownloadStatus.text = getString(R.string.dl_no_link)
+            return
+        }
+        tvDownloadStatus.visibility = View.VISIBLE
+        tvDownloadStatus.text = getString(R.string.dl_starting)
+        pbDownload.visibility = View.VISIBLE
+        pbDownload.progress = 0
+        modelDownloader = ModelDownloader(this)
+        modelDownloader?.start(model, downloadListener())
     }
 
     private fun explainQuestion() {
@@ -613,6 +715,14 @@ class MainActivity : AppCompatActivity() {
         btnSend = findViewById(R.id.btnSend)
         cardSetup = findViewById(R.id.cardSetup)
         btnRecheck = findViewById(R.id.btnRecheck)
+        tvSetupBody = findViewById(R.id.tvSetupBody)
+        rgModels = findViewById(R.id.rgModels)
+        rbModelLite = findViewById(R.id.rbModelLite)
+        rbModelStandard = findViewById(R.id.rbModelStandard)
+        rbModelPro = findViewById(R.id.rbModelPro)
+        btnDownloadModel = findViewById(R.id.btnDownloadModel)
+        pbDownload = findViewById(R.id.pbDownload)
+        tvDownloadStatus = findViewById(R.id.tvDownloadStatus)
     }
 
     /** Bhasha dropdown: user jis bhasha me chahe jawab paye. Choice save rehti hai. */
@@ -676,6 +786,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.w("MainActivity", "TTS shutdown failed", e)
         }
+        modelDownloader?.detach()
         cameraManager.shutdown()
         tutor.close()
         super.onDestroy()

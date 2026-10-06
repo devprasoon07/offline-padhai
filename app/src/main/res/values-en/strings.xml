@@ -19,6 +19,12 @@
 
     <string name="setup_title">Model not ready</string>
     <string name="setup_body">The Gemma model isn\'t in the app yet. Place the .bin file in the app\'s folder (see README), then tap below.</string>
+    <string name="btn_download_model">Download model</string>
+    <string name="setup_body_new">No AI model yet. Pick one below and download it (one-time, needs internet). After that everything works fully offline.</string>
+    <string name="dl_starting">Download shuru ho raha hai…</string>
+    <string name="dl_no_link">Is model ka download link abhi set nahi hai.</string>
+    <string name="dl_complete">Download poora hua — model load ho raha hai…</string>
+    <string name="dl_cancelled">Download cancel kiya gaya.</string>
     <string name="btn_recheck">Check again</string>
 
     <string name="status_model_loading">Loading model…</string>

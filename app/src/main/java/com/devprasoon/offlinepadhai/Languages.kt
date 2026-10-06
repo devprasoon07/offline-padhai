@@ -47,4 +47,19 @@ object AppPrefs {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY_LANG, code).apply()
     }
+
+    private const val KEY_MODEL = "selected_model"
+
+    /** Chuna hua AI model (lite/standard/pro) — default Standard. */
+    fun getModelId(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_MODEL, ModelCatalog.default().id)
+            ?: ModelCatalog.default().id
+
+    fun setModelId(context: Context, id: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_MODEL, id).apply()
+    }
+
+    fun getModel(context: Context): AIModel = ModelCatalog.byId(getModelId(context))
 }
