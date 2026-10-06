@@ -11,8 +11,8 @@ android {
         applicationId = "com.devprasoon.offlinepadhai"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0-8d37253"
+        versionCode = 2
+        versionName = "1.0-808e6a9"
     }
 
     // Release signing: keystore.properties (git me COMMIT MAT KARNA)
