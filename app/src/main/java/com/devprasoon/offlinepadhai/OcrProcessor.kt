@@ -2,6 +2,10 @@ package com.devprasoon.offlinepadhai
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
@@ -48,11 +52,17 @@ object OcrProcessor {
 
     private suspend fun recognize(bitmap: Bitmap): OcrResult {
         return try {
-            val devanagariText = recognizeWith(bitmap, devanagariRecognizer).trim()
-            val text = if (devanagariText.isNotEmpty()) {
-                devanagariText
-            } else {
-                recognizeWith(bitmap, latinRecognizer).trim()
+            var text = recognizeBoth(bitmap).trim()
+            if (text.isEmpty()) {
+                // Handwriting fallback: ML Kit printed text to achhe se padhta hai,
+                // par halki pencil/handwriting me aksar khaali lautata hai.
+                // Grayscale + contrast boost karke dobara try karo.
+                val enhanced = enhanceForHandwriting(bitmap)
+                try {
+                    text = recognizeBoth(enhanced).trim()
+                } finally {
+                    if (!enhanced.isRecycled) enhanced.recycle()
+                }
             }
             val cleaned = cleanText(text)
             if (cleaned.isEmpty()) {
@@ -63,6 +73,41 @@ object OcrProcessor {
         } catch (e: Exception) {
             OcrResult.Error("Text padhne me dikkat aayi.")
         }
+    }
+
+    /** Dono recognizer try karo: pehle Devanagari, phir Latin fallback. */
+    private suspend fun recognizeBoth(bitmap: Bitmap): String {
+        val devanagariText = recognizeWith(bitmap, devanagariRecognizer).trim()
+        return if (devanagariText.isNotEmpty()) {
+            devanagariText
+        } else {
+            recognizeWith(bitmap, latinRecognizer).trim()
+        }
+    }
+
+    /**
+     * Handwriting ke liye image enhance karo: grayscale + contrast boost.
+     * Halki pencil strokes gehri ho jati hain, paper ka color-noise hat jata hai.
+     * Sirf fallback me use hota hai — normal photo pe original hi rehta hai.
+     */
+    private fun enhanceForHandwriting(src: Bitmap): Bitmap {
+        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        val gray = ColorMatrix().apply { setSaturation(0f) }
+        // Contrast 1.6x + thodi brightness kam — feeke strokes ubhar aate hain.
+        val contrastBoost = ColorMatrix(
+            floatArrayOf(
+                1.6f, 0f, 0f, 0f, -20f,
+                0f, 1.6f, 0f, 0f, -20f,
+                0f, 0f, 1.6f, 0f, -20f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        gray.postConcat(contrastBoost)
+        val paint = Paint().apply {
+            colorFilter = ColorMatrixColorFilter(gray)
+        }
+        Canvas(out).drawBitmap(src, 0f, 0f, paint)
+        return out
     }
 
     /**
