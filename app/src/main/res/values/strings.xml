@@ -9,6 +9,9 @@
     <string name="question_label">Sawal</string>
     <string name="btn_explain">Samjhao</string>
     <string name="explaining">Samjha raha hu…</string>
+    <string name="confidence_label">Confidence</string>
+    <string name="confidence_hint">Kaon tum hai: Low (50&#37;~-80&#37;) | Medium (81&#37;~-95&#37;) | High (96&#37;~100&#37;)</string>
+    <string name="citations_label">Citations</string>
 
     <string name="followup_label">Kuch aur puchho?</string>
     <string name="followup_hint">Yahan likho…</string>

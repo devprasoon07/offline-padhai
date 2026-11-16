@@ -350,6 +350,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            override fun onAnswerResponse(response: TutorEngine.AnswerResponse) {
+                val conf = if (response.confidence >= 80) "🟢 ${response.confidence}%"
+                           else if (response.confidence >= 60) "🟡 ${response.confidence}%"
+                           else "🔴 ${response.confidence}%"
+                showStatus("Confidence: $conf")
+            }
+
             override fun onError(message: String) {
                 rowThinking.visibility = View.GONE
                 btnExplain.isEnabled = true
@@ -426,6 +433,13 @@ class MainActivity : AppCompatActivity() {
                         historyManager.updateAnswer(id, fullText)
                     }
                 }
+            }
+
+            override fun onAnswerResponse(response: TutorEngine.AnswerResponse) {
+                val conf = if (response.confidence >= 80) "🟢 ${response.confidence}%"
+                           else if (response.confidence >= 60) "🟡 ${response.confidence}%"
+                           else "🔴 ${response.confidence}%"
+                showStatus("Confidence: $conf")
             }
 
             override fun onError(message: String) {
