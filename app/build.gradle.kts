@@ -11,8 +11,8 @@ android {
         applicationId = "com.devprasoon.offlinepadhai"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0-8d37253"
+        versionCode = 3
+        versionName = "3.0-ui-redesign"
     }
     buildTypes {
         release {
