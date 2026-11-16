@@ -9,6 +9,19 @@
 
         <item name="colorPrimary">@color/accent_amber</item>
         <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorPrimaryContainer">@color/accent_amber_soft</item>
+        <item name="colorOnPrimaryContainer">@color/on_accent</item>
+
+        <item name="colorSecondary">@color/accent_blue</item>
+        <item name="colorOnSecondary">@color/on_accent</item>
+        <item name="colorSecondaryContainer">@color/accent_amber_soft</item>
+        <item name="colorOnSecondaryContainer">@color/on_accent</item>
+
+        <item name="colorTertiary">@color/accent_green</item>
+        <item name="colorOnTertiary">@color/on_accent</item>
+        <item name="colorTertiaryContainer">@color/accent_amber_soft</item>
+        <item name="colorOnTertiaryContainer">@color/on_accent</item>
+
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorSurfaceVariant">@color/surface_elevated</item>
